@@ -198,8 +198,6 @@ class _SignInPageState extends State<SignInPage> {
                     icon: const Icon(Icons.g_mobiledata, size: 28),
                     label: const Text('Sign in with Google'),
                   ),
-                  const SizedBox(height: 12),
-
                   const SizedBox(height: 24),
 
                   // Sign Up Link
