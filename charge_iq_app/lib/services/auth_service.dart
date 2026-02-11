@@ -7,6 +7,13 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   bool _googleInitialized = false;
 
+  Future<void> _ensureGoogleInitialized() async {
+    if (!_googleInitialized) {
+      await _googleSignIn.initialize();
+      _googleInitialized = true;
+    }
+  }
+
   // Get current user
   User? get currentUser => _auth.currentUser;
 
@@ -42,10 +49,7 @@ class AuthService {
   // Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      if (!_googleInitialized) {
-        await _googleSignIn.initialize();
-        _googleInitialized = true;
-      }
+      await _ensureGoogleInitialized();
 
       // Trigger the authentication flow
       final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
@@ -71,6 +75,7 @@ class AuthService {
 
   // Sign out
   Future<void> signOut() async {
+    await _ensureGoogleInitialized();
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
