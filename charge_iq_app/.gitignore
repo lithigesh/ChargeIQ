@@ -43,3 +43,29 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase
+lib/firebase_options.dart
+firebase_options.dart
+.firebaserc
+firebase-debug.log
+firebase-debug.*.log
+firebase.json
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Secrets
+*.pem
+*.key
+*.p12
+*.mobileprovision
+secrets.json
+
+# Node.js (if using for Firebase CLI or web)
+node_modules/
+package-lock.json
+npm-debug.log
+yarn-error.log
