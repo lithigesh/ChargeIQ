@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'screens/sign_in_page.dart';
@@ -129,18 +130,26 @@ class _InitializationScreenState extends State<InitializationScreen> {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final authService = AuthService();
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
 
-    return StreamBuilder(
-      stream: authService.authStateChanges,
+class _AuthWrapperState extends State<AuthWrapper> {
+  final AuthService _authService = AuthService();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: _authService.authStateChanges,
       builder: (context, snapshot) {
-        // Show loading indicator while checking auth state
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // Check current user immediately to avoid loading flash
+        final currentUser = _authService.currentUser;
+        
+        // Only show loading on initial app start when we truly don't know the state
+        if (snapshot.connectionState == ConnectionState.waiting && currentUser == null) {
           return const Scaffold(
             body: Center(
               child: CircularProgressIndicator(),
@@ -148,13 +157,16 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // If user is signed in, show home screen
-        if (snapshot.hasData) {
-          return const HomeScreen();
-        }
+        // Determine if user is logged in
+        final isLoggedIn = snapshot.hasData || currentUser != null;
 
-        // Otherwise, show sign in page
-        return const SignInPage();
+        // Use AnimatedSwitcher for smooth transitions
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: isLoggedIn
+              ? const HomeScreen(key: ValueKey('home'))
+              : const SignInPage(key: ValueKey('signin')),
+        );
       },
     );
   }

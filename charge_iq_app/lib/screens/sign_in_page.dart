@@ -211,7 +211,7 @@ class _SignInPageState extends State<SignInPage> {
                         onPressed: _isLoading
                             ? null
                             : () {
-                                Navigator.pushReplacement(
+                                Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => const SignUpPage(),
