@@ -37,15 +37,26 @@ class _SignUpPageState extends State<SignUpPage> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-      // Navigation handled by StreamBuilder in main.dart
+      // Show success message - user is automatically logged in by Firebase
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created successfully! Logging you in...'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        // Pop back to AuthWrapper which will now show HomeScreen
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+      // Don't set isLoading to false on success - we're navigating away
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
+        setState(() => _isLoading = false);
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 

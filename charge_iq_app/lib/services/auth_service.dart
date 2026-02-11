@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
@@ -31,6 +32,10 @@ class AuthService {
       return result;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
+    } on FirebaseException catch (e) {
+      throw _handleFirebaseException(e);
+    } catch (e) {
+      throw 'Sign in failed: ${e.toString()}';
     }
   }
 
@@ -44,6 +49,10 @@ class AuthService {
       return result;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
+    } on FirebaseException catch (e) {
+      throw _handleFirebaseException(e);
+    } catch (e) {
+      throw 'Sign up failed: ${e.toString()}';
     }
   }
 
@@ -96,13 +105,33 @@ class AuthService {
       case 'user-not-found':
         return 'No user found with this email.';
       case 'wrong-password':
-        return 'Wrong password provided.';
+        return 'Incorrect password. Please try again.';
+      case 'invalid-credential':
+        return 'Invalid email or password. Please check your credentials.';
       case 'email-already-in-use':
         return 'An account already exists with this email.';
       case 'weak-password':
-        return 'Password is too weak.';
+        return 'Password is too weak. Use at least 6 characters.';
       case 'invalid-email':
-        return 'Email address is invalid.';
+        return 'Please enter a valid email address.';
+      case 'user-disabled':
+        return 'This account has been disabled. Contact support.';
+      case 'too-many-requests':
+        return 'Too many failed attempts. Please try again later.';
+      case 'network-request-failed':
+        return 'Network error. Check your internet connection.';
+      case 'operation-not-allowed':
+        return 'This sign-in method is not enabled.';
+      default:
+        return e.message ?? 'An error occurred. Please try again.';
+    }
+  }
+
+  // Handle general Firebase exceptions
+  String _handleFirebaseException(FirebaseException e) {
+    switch (e.code) {
+      case 'network-request-failed':
+        return 'Network error. Check your internet connection.';
       default:
         return e.message ?? 'An error occurred. Please try again.';
     }
