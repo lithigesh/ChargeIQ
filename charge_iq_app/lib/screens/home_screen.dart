@@ -43,7 +43,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                user.email ?? user.phoneNumber ?? 'User',
+                user.email ?? 'User',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
