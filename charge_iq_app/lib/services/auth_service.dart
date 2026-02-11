@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 
 class AuthService {
@@ -8,7 +9,7 @@ class AuthService {
   bool _googleInitialized = false;
 
   Future<void> _ensureGoogleInitialized() async {
-    if (!_googleInitialized) {
+    if (!_googleInitialized && !kIsWeb) {
       await _googleSignIn.initialize();
       _googleInitialized = true;
     }
@@ -49,21 +50,28 @@ class AuthService {
   // Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      await _ensureGoogleInitialized();
+      if (kIsWeb) {
+        // For Web: Use Firebase Auth's signInWithPopup (no Client ID needed)
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        return await _auth.signInWithPopup(googleProvider);
+      } else {
+        // For Mobile: Use google_sign_in package
+        await _ensureGoogleInitialized();
 
-      // Trigger the authentication flow
-      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+        // Trigger the authentication flow
+        final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
 
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+        // Obtain the auth details from the request
+        final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
-      // Create a new credential (idToken is sufficient for Firebase Auth)
-      final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
+        // Create a new credential
+        final credential = GoogleAuthProvider.credential(
+          idToken: googleAuth.idToken,
+        );
 
-      // Sign in to Firebase with the Google credential
-      return await _auth.signInWithCredential(credential);
+        // Sign in to Firebase with the Google credential
+        return await _auth.signInWithCredential(credential);
+      }
     } on GoogleSignInException catch (e) {
       throw 'Google Sign In failed: ${e.code.name}';
     } on PlatformException catch (e) {
@@ -75,8 +83,10 @@ class AuthService {
 
   // Sign out
   Future<void> signOut() async {
-    await _ensureGoogleInitialized();
-    await _googleSignIn.signOut();
+    if (!kIsWeb) {
+      await _ensureGoogleInitialized();
+      await _googleSignIn.signOut();
+    }
     await _auth.signOut();
   }
 
