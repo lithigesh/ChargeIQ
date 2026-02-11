@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'sign_in_page.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -41,15 +40,14 @@ class _SignUpPageState extends State<SignUpPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account created successfully! Logging you in...'),
+            content: Text('Account created successfully!'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
         );
-        // Pop back to AuthWrapper which will now show HomeScreen
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        // Pop back - AuthWrapper will automatically show HomeScreen
+        Navigator.of(context).pop();
       }
-      // Don't set isLoading to false on success - we're navigating away
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -209,12 +207,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         onPressed: _isLoading
                             ? null
                             : () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const SignInPage(),
-                                  ),
-                                );
+                                Navigator.pop(context);
                               },
                         child: const Text('Sign In'),
                       ),
