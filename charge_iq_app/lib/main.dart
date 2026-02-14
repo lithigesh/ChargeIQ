@@ -109,7 +109,6 @@ class _InitializationScreenState extends State<InitializationScreen> {
       );
     }
 
-    // Show loading screen
     if (!_initialized) {
       return const Scaffold(
         body: Center(
@@ -125,7 +124,6 @@ class _InitializationScreenState extends State<InitializationScreen> {
       );
     }
 
-    // Show auth wrapper after initialization
     return const AuthWrapper();
   }
 }
