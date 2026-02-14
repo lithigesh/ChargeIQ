@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'screens/sign_in_page.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -162,7 +162,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           child: isLoggedIn
-              ? const HomeScreen(key: ValueKey('home'))
+              ? const MainScreen(key: ValueKey('home'))
               : const SignInPage(key: ValueKey('signin')),
         );
       },
