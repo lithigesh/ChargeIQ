@@ -26,7 +26,6 @@ class MyApp extends StatelessWidget {
           primary: const Color(0xFF00D26A),
           secondary: const Color(0xFF1565C0),
           surface: Colors.white,
-          background: const Color(0xFFF5F5F5),
         ),
         useMaterial3: true,
         fontFamily: 'Roboto',
