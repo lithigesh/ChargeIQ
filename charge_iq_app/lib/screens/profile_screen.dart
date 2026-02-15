@@ -145,7 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
+                        color: Colors.black.withOpacity(0.05),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -203,7 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: Colors.black.withOpacity(0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
                         ),
@@ -349,6 +349,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Icons.bookmark_border,
                     badgeCount: 8,
                   ),
+                  if (!(_user?.providerData.any(
+                        (p) => p.providerId == 'google.com',
+                      ) ??
+                      false))
+                    _buildSettingItem(
+                      'Link Google Account',
+                      Icons.link,
+                      onTap: () async {
+                        try {
+                          await _authService.linkWithGoogle();
+                          await _user?.reload();
+                          setState(() {
+                            _user = _authService.currentUser;
+                          });
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Google account linked successfully!',
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString()),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
                   _buildSettingItem(
                     'Log Out',
                     Icons.logout,
@@ -377,7 +413,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color, size: 24),
