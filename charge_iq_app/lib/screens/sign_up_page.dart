@@ -10,6 +10,7 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -23,6 +24,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -51,6 +53,7 @@ class _SignUpPageState extends State<SignUpPage> {
       await _authService.signUpWithEmail(
         _emailController.text.trim(),
         _passwordController.text,
+        fullName: _nameController.text.trim(),
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -137,6 +140,13 @@ class _SignUpPageState extends State<SignUpPage> {
                     _buildInputLabel('Full Name'),
                     const SizedBox(height: 8),
                     TextFormField(
+                      controller: _nameController,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your full name';
+                        }
+                        return null;
+                      },
                       decoration: _inputDecoration(
                         hint: 'John Doe',
                         icon: Icons.person_outline,
