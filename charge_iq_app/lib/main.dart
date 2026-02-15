@@ -189,10 +189,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
     return StreamBuilder<User?>(
       stream: _authService.authStateChanges,
       builder: (context, snapshot) {
-        // Check current user immediately to avoid loading flash
         final currentUser = _authService.currentUser;
+        final hasData =
+            snapshot.hasData; // User is logged in according to stream
 
-        // Only show loading on initial app start when we truly don't know the state
+        // Debug logging
+        // print('AuthWrapper: snapshot.connectionState=${snapshot.connectionState}, hasData=$hasData, currentUser=${currentUser?.uid}');
+
         if (snapshot.connectionState == ConnectionState.waiting &&
             currentUser == null) {
           return const Scaffold(
@@ -200,16 +203,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
-        // Determine if user is logged in
-        final isLoggedIn = snapshot.hasData || currentUser != null;
+        if (hasData || currentUser != null) {
+          return const MainScreen(key: ValueKey('home'));
+        }
 
-        // Use AnimatedSwitcher for smooth transitions
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: isLoggedIn
-              ? const MainScreen(key: ValueKey('home'))
-              : const SignInPage(key: ValueKey('signin')),
-        );
+        return const SignInPage(key: ValueKey('signin'));
       },
     );
   }
