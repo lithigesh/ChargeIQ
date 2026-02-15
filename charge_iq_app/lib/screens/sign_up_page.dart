@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'main_screen.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -63,7 +64,16 @@ class _SignUpPageState extends State<SignUpPage> {
             duration: Duration(seconds: 2),
           ),
         );
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        // Use forced navigation as well for consistency
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted && _authService.currentUser != null) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => const MainScreen(key: ValueKey('home')),
+            ),
+            (route) => false,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -79,9 +89,34 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _isLoading = true);
 
     try {
-      await _authService.signInWithGoogle();
+      final credential = await _authService.signInWithGoogle();
+
       if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        final isNewUser = credential?.additionalUserInfo?.isNewUser ?? false;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isNewUser
+                  ? 'Account created successfully!'
+                  : 'Account already exists. Logging you in...',
+            ),
+            backgroundColor: isNewUser ? Colors.green : Colors.blue,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        // Safety check and forced navigation
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (mounted && _authService.currentUser != null) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => const MainScreen(key: ValueKey('home')),
+            ),
+            (route) => false,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -223,7 +258,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE0F7FA).withValues(alpha: 0.3),
+                        color: const Color(0xFFE0F7FA).withOpacity(0.3),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.grey.shade200),
                       ),
