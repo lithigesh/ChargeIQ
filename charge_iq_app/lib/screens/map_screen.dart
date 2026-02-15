@@ -14,7 +14,7 @@ class _MapScreenState extends State<MapScreen> {
   final String apiKey = "81bb8211-e4a9-4df9-b694-81e74afe4908";
 
   Set<Marker> _markers = {};
-  MapType _currentMapType = MapType.normal;
+  final MapType _currentMapType = MapType.normal;
 
   final List<LatLng> tamilNaduCities = [
     LatLng(13.0827, 80.2707),
@@ -121,7 +121,7 @@ class _MapScreenState extends State<MapScreen> {
                       borderRadius: BorderRadius.circular(25),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
+                          color: Colors.black.withValues(alpha: 0.08),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
@@ -159,7 +159,7 @@ class _MapScreenState extends State<MapScreen> {
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
