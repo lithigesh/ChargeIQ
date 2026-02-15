@@ -45,6 +45,16 @@ class _SignInPageState extends State<SignInPage>
 
       print("Sign in successful: ${cred?.user?.uid}");
 
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Signed in successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+
       // Safety check: if AuthWrapper doesn't react within 500ms, force navigation
       if (mounted) {
         // wait for stream propogation
@@ -73,7 +83,35 @@ class _SignInPageState extends State<SignInPage>
     setState(() => _isLoading = true);
 
     try {
-      await _authService.signInWithGoogle();
+      final cred = await _authService.signInWithGoogle();
+
+      print("Google Sign in successful: ${cred?.user?.uid}");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Signed in successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+
+      // Safety check: if AuthWrapper doesn't react within 500ms, force navigation
+      if (mounted) {
+        // wait for stream propogation
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted && _authService.currentUser != null) {
+          print(
+            "AuthWrapper didn't switch after Google Sign In, forcing navigation.",
+          );
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => const MainScreen(key: ValueKey('home')),
+            ),
+          );
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
