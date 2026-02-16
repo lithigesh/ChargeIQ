@@ -5,10 +5,15 @@ import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'screens/sign_in_page.dart';
 import 'screens/main_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'screens/splash_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
+
   runApp(const MyApp());
 }
 
