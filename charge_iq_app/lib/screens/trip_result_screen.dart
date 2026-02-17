@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'dart:convert';
+import '../models/vehicle.dart';
 import '../services/gemini_service.dart';
 import '../services/trip_service.dart';
 import '../services/directions_service.dart';
@@ -13,7 +14,9 @@ class TripResultScreen extends StatefulWidget {
   final String vehicleType;
   final bool useCurrentLocation;
   final String? preLoadedPlan;
-  final String? tripId; // For deletion from Firestore
+  final String? tripId;
+  final List<Vehicle> vehicles;
+  final String startTime;
 
   const TripResultScreen({
     super.key,
@@ -24,6 +27,8 @@ class TripResultScreen extends StatefulWidget {
     required this.useCurrentLocation,
     this.preLoadedPlan,
     this.tripId,
+    this.vehicles = const [],
+    this.startTime = '09:00',
   });
 
   @override
@@ -104,6 +109,8 @@ class _TripResultScreenState extends State<TripResultScreen> {
       final plan = await _geminiService.planTrip(
         startLocation: start,
         destination: widget.destination,
+        vehicles: widget.vehicles,
+        startTime: widget.startTime,
         evRange: widget.evRange,
         vehicleType: widget.vehicleType,
       );
@@ -429,7 +436,7 @@ class _TripResultScreenState extends State<TripResultScreen> {
                   Expanded(
                     child: Container(
                       width: 2,
-                      color: Colors.grey.withOpacity(0.3),
+                      color: Colors.grey.withValues(alpha: 0.3),
                     ),
                   ),
               ],
@@ -551,61 +558,144 @@ class _TripResultScreenState extends State<TripResultScreen> {
             ),
           ),
           const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.restaurant, size: 18, color: Colors.orange),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        segment['restaurant_name'] ?? 'Dining Option',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+          if (segment['restaurant_name'] != null &&
+              segment['restaurant_name'].toString().isNotEmpty &&
+              segment['restaurant_name'].toString().toLowerCase() != 'null')
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    _getMealIcon(segment['meal_type']),
+                    size: 18,
+                    color: _getMealColor(segment['meal_type']),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                segment['restaurant_name'] ?? 'Dining Option',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (segment['meal_type'] != null &&
+                                segment['meal_type'] != 'none')
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getMealColor(
+                                    segment['meal_type'],
+                                  ).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  (segment['meal_type'] as String)
+                                          .substring(0, 1)
+                                          .toUpperCase() +
+                                      (segment['meal_type'] as String)
+                                          .substring(1),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: _getMealColor(segment['meal_type']),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, size: 14, color: Colors.amber),
-                          const SizedBox(width: 4),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              size: 14,
+                              color: Colors.amber,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${segment['restaurant_rating'] ?? 'N/A'}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            if (segment['cuisine_type'] != null) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                '• ${segment['cuisine_type']}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (segment['notes'] != null) ...[
+                          const SizedBox(height: 6),
                           Text(
-                            '${segment['restaurant_rating'] ?? 'N/A'}',
+                            segment['notes'],
                             style: const TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.black54,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                      ),
-                      if (segment['notes'] != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          segment['notes'],
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                            color: Colors.black54,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
+  }
+
+  IconData _getMealIcon(String? mealType) {
+    switch (mealType) {
+      case 'breakfast':
+        return Icons.free_breakfast;
+      case 'lunch':
+        return Icons.restaurant;
+      case 'dinner':
+        return Icons.dinner_dining;
+      case 'snack':
+        return Icons.local_cafe;
+      default:
+        return Icons.restaurant;
+    }
+  }
+
+  Color _getMealColor(String? mealType) {
+    switch (mealType) {
+      case 'breakfast':
+        return const Color(0xFFFF9800);
+      case 'lunch':
+        return const Color(0xFF4CAF50);
+      case 'dinner':
+        return const Color(0xFF9C27B0);
+      case 'snack':
+        return const Color(0xFF795548);
+      default:
+        return Colors.orange;
+    }
   }
 }
