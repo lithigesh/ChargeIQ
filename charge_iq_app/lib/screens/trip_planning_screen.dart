@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 import '../models/vehicle.dart';
 import '../services/places_service.dart';
@@ -24,6 +26,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   bool _useCurrentLocation = true;
   String? _startLocationName;
   String? _destinationLocationName;
+  double? _startLat;
+  double? _startLng;
+  double? _destLat;
+  double? _destLng;
 
   // Vehicle selection
   List<Vehicle> _allVehicles = [];
@@ -77,7 +83,36 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     return '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}';
   }
 
-  void _planTrip() {
+  Future<Map<String, dynamic>?> _resolveCurrentLocation() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        Position position = await Geolocator.getCurrentPosition();
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+        if (placemarks.isNotEmpty) {
+          final placemark = placemarks.first;
+          final cityName = placemark.locality ?? placemark.subAdministrativeArea ?? 'Current Location';
+          return {
+            'name': cityName,
+            'lat': position.latitude,
+            'lng': position.longitude,
+          };
+        }
+      }
+    } catch (e) {
+      print('Error resolving current location: $e');
+    }
+    return null;
+  }
+
+  void _planTrip() async {
     if (_selectedVehicles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select at least one vehicle')),
@@ -100,6 +135,20 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       return;
     }
 
+    // Resolve current location to city name if needed
+    String finalStartLocation = _startLocationName ?? 'Current Location';
+    double? finalStartLat = _startLat;
+    double? finalStartLng = _startLng;
+    
+    if (_useCurrentLocation) {
+      final resolved = await _resolveCurrentLocation();
+      if (resolved != null) {
+        finalStartLocation = resolved['name'];
+        finalStartLat = resolved['lat'];
+        finalStartLng = resolved['lng'];
+      }
+    }
+
     // Get the minimum range across selected vehicles
     final minRange = _selectedVehicles
         .map((v) => v.maxRange)
@@ -110,17 +159,27 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
         .map((v) => '${v.brand} ${v.model}')
         .join(', ');
 
+    // Use the first selected vehicle as primary vehicle for the trip
+    final primaryVehicle = _selectedVehicles.first;
+
+    if (!mounted) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => TripResultScreen(
-          startLocation: _startLocationName ?? 'Current Location',
+          startLocation: finalStartLocation,
           destination: _destinationLocationName!,
+          vehicleId: primaryVehicle.id,
           evRange: minRange.toStringAsFixed(0),
           vehicleType: vehicleNames,
           useCurrentLocation: _useCurrentLocation,
           vehicles: _selectedVehicles,
           startTime: _getStartTimeString(),
+          startLat: finalStartLat,
+          startLng: finalStartLng,
+          destLat: _destLat,
+          destLng: _destLng,
         ),
       ),
     );
@@ -133,13 +192,18 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
         builder: (context) => TripResultScreen(
           startLocation: trip.startLocation,
           destination: trip.destination,
+          vehicleId: trip.vehicleId,
           evRange: trip.evRange.toString(),
           vehicleType: trip.vehicleType,
-          useCurrentLocation: trip.startLocation == 'Current Location',
+          useCurrentLocation: false,
           preLoadedPlan: trip.planData,
           tripId: trip.id,
           vehicles: _selectedVehicles,
           startTime: _getStartTimeString(),
+          startLat: trip.startLat,
+          startLng: trip.startLng,
+          destLat: trip.destLat,
+          destLng: trip.destLng,
         ),
       ),
     );
