@@ -6,11 +6,13 @@ import '../models/vehicle.dart';
 import '../services/gemini_service.dart';
 import '../services/trip_service.dart';
 import '../services/directions_service.dart';
+import '../services/vehicle_service.dart';
 import 'main_screen.dart';
 
 class TripResultScreen extends StatefulWidget {
   final String startLocation;
   final String destination;
+  final String vehicleId;
   final String evRange;
   final String vehicleType;
   final bool useCurrentLocation;
@@ -18,11 +20,16 @@ class TripResultScreen extends StatefulWidget {
   final String? tripId;
   final List<Vehicle> vehicles;
   final String startTime;
+  final double? startLat;
+  final double? startLng;
+  final double? destLat;
+  final double? destLng;
 
   const TripResultScreen({
     super.key,
     required this.startLocation,
     required this.destination,
+    required this.vehicleId,
     required this.evRange,
     required this.vehicleType,
     required this.useCurrentLocation,
@@ -30,6 +37,10 @@ class TripResultScreen extends StatefulWidget {
     this.tripId,
     this.vehicles = const [],
     this.startTime = '09:00',
+    this.startLat,
+    this.startLng,
+    this.destLat,
+    this.destLng,
   });
 
   @override
@@ -43,6 +54,7 @@ class _TripResultScreenState extends State<TripResultScreen>
   final GeminiService _geminiService = GeminiService();
   final TripService _tripService = TripService();
   final DirectionsService _directionsService = DirectionsService();
+  final VehicleService _vehicleService = VehicleService();
 
   String? _generatedPlan;
   bool _isLoading = true;
@@ -50,7 +62,8 @@ class _TripResultScreenState extends State<TripResultScreen>
   String? _realTimeDistance;
   String? _realTimeDuration;
   bool _isSaved = false;
-  String _currentCity = '';
+  Vehicle? _tripVehicle;
+  bool _isVehicleExpanded = false;
 
   @override
   void initState() {
@@ -63,7 +76,7 @@ class _TripResultScreenState extends State<TripResultScreen>
       parent: _directionsBtnController,
       curve: Curves.easeOutBack,
     );
-    _fetchCurrentCity();
+    _loadVehicle();
     if (widget.preLoadedPlan != null) {
       _generatedPlan = widget.preLoadedPlan;
       _isLoading = false;
@@ -74,54 +87,33 @@ class _TripResultScreenState extends State<TripResultScreen>
     }
   }
 
+  Future<void> _loadVehicle() async {
+    if (widget.vehicleId.isEmpty) return;
+    
+    try {
+      final vehicle = await _vehicleService.getVehicle(widget.vehicleId);
+      if (mounted && vehicle != null) {
+        setState(() {
+          _tripVehicle = vehicle;
+        });
+      }
+    } catch (e) {
+      print('Error loading vehicle: $e');
+    }
+  }
+
   @override
   void dispose() {
     _directionsBtnController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchCurrentCity() async {
-    try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.whileInUse ||
-          permission == LocationPermission.always) {
-        Position position = await Geolocator.getCurrentPosition();
-        List<Placemark> placemarks = await placemarkFromCoordinates(
-          position.latitude,
-          position.longitude,
-        );
-        if (placemarks.isNotEmpty && mounted) {
-          setState(() {
-            _currentCity = placemarks.first.locality ?? '';
-          });
-        }
-      }
-    } catch (e) {
-      print('Error fetching city: $e');
-    }
-  }
-
   Future<void> _generatePlan() async {
     String start = widget.startLocation;
 
-    if (widget.useCurrentLocation &&
-        start.toLowerCase().contains('current location')) {
-      try {
-        LocationPermission permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-        }
-        if (permission == LocationPermission.whileInUse ||
-            permission == LocationPermission.always) {
-          Position position = await Geolocator.getCurrentPosition();
-          start = '${position.latitude}, ${position.longitude}';
-        }
-      } catch (e) {
-        print('Location fetch failed: $e');
-      }
+    // Use coordinates if available for more accurate routing
+    if (widget.useCurrentLocation && widget.startLat != null && widget.startLng != null) {
+      start = '${widget.startLat}, ${widget.startLng}';
     }
 
     try {
@@ -149,6 +141,8 @@ class _TripResultScreenState extends State<TripResultScreen>
           _isLoading = false;
         });
         _directionsBtnController.forward();
+        // Auto-save the trip
+        _saveTrip();
       }
     } catch (e) {
       if (mounted) {
@@ -183,19 +177,20 @@ class _TripResultScreenState extends State<TripResultScreen>
       await _tripService.saveTrip(
         startLocation: widget.startLocation,
         destination: widget.destination,
+        vehicleId: widget.vehicleId,
         evRange: int.tryParse(widget.evRange) ?? 300,
         vehicleType: widget.vehicleType,
         planData: finalPlanData,
+        startLat: widget.startLat,
+        startLng: widget.startLng,
+        destLat: widget.destLat,
+        destLng: widget.destLng,
       );
 
       print(
         'Trip saved to Firestore path: users/${_tripService.currentUserId}/trips',
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Trip saved successfully!')),
-        );
-      }
+      // Auto-saved silently, no need to show success message
     } catch (e) {
       print('Save Trip Error: $e');
       setState(() {
@@ -265,15 +260,7 @@ class _TripResultScreenState extends State<TripResultScreen>
 
   @override
   Widget build(BuildContext context) {
-    String titleText;
-    if (widget.startLocation == 'Current Location' ||
-        widget.startLocation.contains(',')) {
-      titleText = _currentCity.isNotEmpty
-          ? '$_currentCity → ${widget.destination}'
-          : 'Trip to ${widget.destination}';
-    } else {
-      titleText = '${widget.startLocation} → ${widget.destination}';
-    }
+    String titleText = '${widget.startLocation} → ${widget.destination}';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
@@ -282,16 +269,11 @@ class _TripResultScreenState extends State<TripResultScreen>
         backgroundColor: Colors.white,
         centerTitle: true,
         actions: [
-          if (!_isLoading && _generatedPlan != null)
-            _isSaved
-                ? IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: _deleteTrip,
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.save_alt),
-                    onPressed: _saveTrip,
-                  ),
+          if (!_isLoading && _generatedPlan != null && widget.tripId != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: _deleteTrip,
+            ),
         ],
       ),
       body: _isLoading
@@ -377,10 +359,19 @@ class _TripResultScreenState extends State<TripResultScreen>
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(20),
-            itemCount: segments.length,
+            itemCount: segments.length + (_tripVehicle != null ? 1 : 0),
             itemBuilder: (context, index) {
-              final seg = segments[index];
-              final isLast = index == segments.length - 1;
+              // Show vehicle card as first item in the scrollable list
+              if (index == 0 && _tripVehicle != null) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: _buildVehicleCard(),
+                );
+              }
+              // Adjust index for route segments
+              final segIndex = _tripVehicle != null ? index - 1 : index;
+              final seg = segments[segIndex];
+              final isLast = segIndex == segments.length - 1;
               return _buildTimelineItem(seg, isLast);
             },
           ),
@@ -432,8 +423,8 @@ class _TripResultScreenState extends State<TripResultScreen>
               Expanded(
                 child: _buildStatChip(
                   Icons.timer,
-                  _realTimeDuration ??
-                      _cleanText(plan['total_duration'] ?? 'N/A'),
+                  _cleanText(_realTimeDuration ??
+                      plan['total_duration'] ?? 'N/A'),
                 ),
               ),
             ],
@@ -482,6 +473,215 @@ class _TripResultScreenState extends State<TripResultScreen>
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getVehicleIcon() {
+    if (_tripVehicle == null) return Icons.directions_car;
+    
+    switch (_tripVehicle!.vehicleType) {
+      case '2 Wheeler':
+        return Icons.two_wheeler;
+      case '3 Wheeler':
+        return Icons.electric_rickshaw;
+      case 'Bus':
+        return Icons.directions_bus;
+      default:
+        return Icons.directions_car;
+    }
+  }
+
+  Widget _buildVehicleCard() {
+    if (_tripVehicle == null) return const SizedBox.shrink();
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isVehicleExpanded = !_isVehicleExpanded;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    _getVehicleIcon(),
+                    color: Colors.black87,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${_tripVehicle!.brand} ${_tripVehicle!.model}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      if (_tripVehicle!.variant.isNotEmpty && !_isVehicleExpanded)
+                        Text(
+                          _tripVehicle!.variant,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _isVehicleExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Colors.grey[600],
+                    size: 24,
+                  ),
+                ),
+              ],
+            ),
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  if (_tripVehicle!.variant.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                          const SizedBox(width: 6),
+                          Text(
+                            _tripVehicle!.variant,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildVehicleInfoChip(
+                          Icons.battery_charging_full,
+                          '${_tripVehicle!.batteryCapacity.toStringAsFixed(0)} kWh',
+                          'Battery',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildVehicleInfoChip(
+                          Icons.speed,
+                          '${_tripVehicle!.maxRange.toStringAsFixed(0)} km',
+                          'Range',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildVehicleInfoChip(
+                          Icons.bolt,
+                          '${_tripVehicle!.maxDCFastChargingPower.toStringAsFixed(0)} kW',
+                          'DC Fast',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildVehicleInfoChip(
+                          Icons.power,
+                          _tripVehicle!.chargingPortType,
+                          'Port',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              crossFadeState: _isVehicleExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVehicleInfoChip(IconData icon, String value, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FE),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: const Color(0xFF1565C0)),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -572,6 +772,10 @@ class _TripResultScreenState extends State<TripResultScreen>
     String clean = text.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
     // Replace standalone 'mi' or 'miles' with 'km' (but NOT 'min')
     clean = clean.replaceAll(RegExp(r'\bmiles?\b'), 'km');
+    // Replace 'hours' and 'hour' with 'hr'
+    clean = clean.replaceAll(RegExp(r'\bhours?\b', caseSensitive: false), 'hr');
+    // Replace 'minutes' and 'minute' with 'min'
+    clean = clean.replaceAll(RegExp(r'\bminutes?\b', caseSensitive: false), 'min');
     return clean;
   }
 
@@ -612,7 +816,7 @@ class _TripResultScreenState extends State<TripResultScreen>
         ),
         const SizedBox(height: 4),
         Text(
-          '${segment['duration'] ?? ''}',
+          _cleanText(segment['duration'] ?? ''),
           style: TextStyle(color: Colors.grey[600], fontSize: 13),
         ),
       ],
@@ -666,7 +870,7 @@ class _TripResultScreenState extends State<TripResultScreen>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        'Est. ${segment['charging_time'] ?? 'N/A'}',
+                        _cleanText('Est. ${segment['charging_time'] ?? 'N/A'}'),
                         style: const TextStyle(
                           color: Color(0xFF2E7D32),
                           fontWeight: FontWeight.bold,
