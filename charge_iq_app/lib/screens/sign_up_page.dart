@@ -69,7 +69,7 @@ class _SignUpPageState extends State<SignUpPage> {
         if (mounted && _authService.currentUser != null) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (_) => const MainScreen(key: ValueKey('home')),
+              builder: (_) => MainScreen(key: MainScreen.mainKey),
             ),
             (route) => false,
           );
@@ -112,7 +112,7 @@ class _SignUpPageState extends State<SignUpPage> {
         if (mounted && _authService.currentUser != null) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (_) => const MainScreen(key: ValueKey('home')),
+              builder: (_) => MainScreen(key: MainScreen.mainKey),
             ),
             (route) => false,
           );

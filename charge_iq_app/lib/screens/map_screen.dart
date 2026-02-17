@@ -13,10 +13,10 @@ class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  State<MapScreen> createState() => MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class MapScreenState extends State<MapScreen> {
   late String apiKey;
   Set<Marker> markers = {};
   Set<Polyline> polylines = {};
@@ -29,7 +29,14 @@ class _MapScreenState extends State<MapScreen> {
   BitmapDescriptor? customEVIcon;
   BitmapDescriptor? customLocationIcon;
   Map<String, dynamic>? selectedStation;
-  
+
+  // Trip route state
+  bool _showingTripRoute = false;
+  String _tripDistance = '';
+  String _tripDuration = '';
+  String _tripDestination = '';
+  List<Map<String, dynamic>> _tripStops = [];
+
   // Cache settings
   static const String CACHE_KEY = 'ev_stations_cache';
   static const String CACHE_TIMESTAMP_KEY = 'ev_stations_timestamp';
@@ -80,7 +87,11 @@ class _MapScreenState extends State<MapScreen> {
     final shadowPaint = Paint()
       ..color = Colors.black.withOpacity(0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-    canvas.drawCircle(Offset(size / 2 + 2, size / 2 + 2), size / 2, shadowPaint);
+    canvas.drawCircle(
+      Offset(size / 2 + 2, size / 2 + 2),
+      size / 2,
+      shadowPaint,
+    );
 
     final paint = Paint()
       ..shader = ui.Gradient.radial(
@@ -127,7 +138,8 @@ class _MapScreenState extends State<MapScreen> {
     double dLat = lat2 - lat1;
     double dLon = lon2 - lon1;
 
-    double a = (1 - cos(dLat)) / 2 + cos(lat1) * cos(lat2) * (1 - cos(dLon)) / 2;
+    double a =
+        (1 - cos(dLat)) / 2 + cos(lat1) * cos(lat2) * (1 - cos(dLon)) / 2;
     double c = 2 * asin(sqrt(a));
 
     return earthRadius * c;
@@ -137,7 +149,7 @@ class _MapScreenState extends State<MapScreen> {
     final prefs = await SharedPreferences.getInstance();
     final timestamp = prefs.getInt(CACHE_TIMESTAMP_KEY);
     if (timestamp == null) return false;
-    
+
     final cacheDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
     final difference = DateTime.now().difference(cacheDate).inDays;
     return difference < CACHE_DURATION_DAYS;
@@ -147,7 +159,7 @@ class _MapScreenState extends State<MapScreen> {
     final prefs = await SharedPreferences.getInstance();
     final cacheString = prefs.getString(CACHE_KEY);
     if (cacheString == null) return null;
-    
+
     final List<dynamic> decoded = jsonDecode(cacheString);
     return decoded.map((e) => e as Map<String, dynamic>).toList();
   }
@@ -155,7 +167,10 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _saveStationsToCache(List<Map<String, dynamic>> stations) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(CACHE_KEY, jsonEncode(stations));
-    await prefs.setInt(CACHE_TIMESTAMP_KEY, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setInt(
+      CACHE_TIMESTAMP_KEY,
+      DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
   Future<void> getCurrentLocation() async {
@@ -191,9 +206,9 @@ class _MapScreenState extends State<MapScreen> {
           Marker(
             markerId: const MarkerId('current_location'),
             position: currentLocation!,
-            icon: customLocationIcon ?? BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueBlue,
-            ),
+            icon:
+                customLocationIcon ??
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
             infoWindow: InfoWindow(
               title: 'Your Location',
               snippet: currentAddressShort,
@@ -274,7 +289,8 @@ class _MapScreenState extends State<MapScreen> {
     if (currentLocation == null) return;
 
     try {
-      final url = "https://maps.googleapis.com/maps/api/geocode/json"
+      final url =
+          "https://maps.googleapis.com/maps/api/geocode/json"
           "?latlng=${currentLocation!.latitude},${currentLocation!.longitude}"
           "&key=$apiKey";
 
@@ -295,7 +311,8 @@ class _MapScreenState extends State<MapScreen> {
               Marker(
                 markerId: const MarkerId('current_location'),
                 position: currentLocation!,
-                icon: customLocationIcon ??
+                icon:
+                    customLocationIcon ??
                     BitmapDescriptor.defaultMarkerWithHue(
                       BitmapDescriptor.hueBlue,
                     ),
@@ -384,9 +401,10 @@ class _MapScreenState extends State<MapScreen> {
 
       // Load from API
       debugPrint('📡 Searching for stations within ${SEARCH_RADIUS_KM}km...');
-      
+
       final radiusMeters = (SEARCH_RADIUS_KM * 1000).toInt();
-      final url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+      final url =
+          "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
           "?location=${currentLocation!.latitude},${currentLocation!.longitude}"
           "&radius=$radiusMeters"
           "&keyword=ev charging station electric vehicle"
@@ -429,16 +447,19 @@ class _MapScreenState extends State<MapScreen> {
         }
 
         // Sort by distance (closest first)
-        stationData.sort((a, b) => 
-          (a['distance'] as double).compareTo(b['distance'] as double)
+        stationData.sort(
+          (a, b) =>
+              (a['distance'] as double).compareTo(b['distance'] as double),
         );
 
         // Save to cache
         await _saveStationsToCache(stationData);
-        
+
         _displayStations(stationData);
-        
-        debugPrint('✅ Found ${stationData.length} stations within ${SEARCH_RADIUS_KM}km');
+
+        debugPrint(
+          '✅ Found ${stationData.length} stations within ${SEARCH_RADIUS_KM}km',
+        );
         _showSnackBar('Found ${stationData.length} charging stations nearby');
       }
     } catch (e) {
@@ -459,15 +480,17 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       // Remove old station markers
       markers.removeWhere((m) => m.markerId.value.startsWith('ChIJ'));
-      
+
       for (var station in stations) {
         markers.add(
           Marker(
             markerId: MarkerId(station['id']),
             position: LatLng(station['lat'], station['lng']),
-            icon: customEVIcon ?? BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueGreen,
-            ),
+            icon:
+                customEVIcon ??
+                BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueGreen,
+                ),
             onTap: () => _showStationDetails(station),
           ),
         );
@@ -517,10 +540,7 @@ class _MapScreenState extends State<MapScreen> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF10B981),
-                  const Color(0xFF059669),
-                ],
+                colors: [const Color(0xFF10B981), const Color(0xFF059669)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -592,7 +612,10 @@ class _MapScreenState extends State<MapScreen> {
                 // Status Badge
                 if (isOpen != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: isOpen ? Colors.green[50] : Colors.red[50],
                       borderRadius: BorderRadius.circular(20),
@@ -643,10 +666,7 @@ class _MapScreenState extends State<MapScreen> {
                       const SizedBox(width: 4),
                       Text(
                         '($totalRatings reviews)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -679,8 +699,8 @@ class _MapScreenState extends State<MapScreen> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: isLoadingDirections 
-                            ? null 
+                        onPressed: isLoadingDirections
+                            ? null
                             : () {
                                 Navigator.pop(context);
                                 _getDirections(station);
@@ -691,7 +711,9 @@ class _MapScreenState extends State<MapScreen> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               )
                             : const Icon(Icons.directions),
@@ -743,9 +765,7 @@ class _MapScreenState extends State<MapScreen> {
   // Center map on selected station
   void _centerOnStation(Map<String, dynamic> station) {
     final position = LatLng(station['lat'], station['lng']);
-    mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(position, 16),
-    );
+    mapController?.animateCamera(CameraUpdate.newLatLngZoom(position, 16));
   }
 
   // Get turn-by-turn directions
@@ -761,8 +781,9 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       final destination = LatLng(station['lat'], station['lng']);
-      
-      final url = "https://maps.googleapis.com/maps/api/directions/json"
+
+      final url =
+          "https://maps.googleapis.com/maps/api/directions/json"
           "?origin=${currentLocation!.latitude},${currentLocation!.longitude}"
           "&destination=${destination.latitude},${destination.longitude}"
           "&mode=driving"
@@ -772,15 +793,15 @@ class _MapScreenState extends State<MapScreen> {
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        
+
         if (json['routes'] != null && json['routes'].isNotEmpty) {
           final route = json['routes'][0];
           final polylinePoints = route['overview_polyline']['points'];
           final legs = route['legs'][0];
-          
+
           // Decode polyline
           final points = _decodePolyline(polylinePoints);
-          
+
           setState(() {
             polylines.clear();
             polylines.add(
@@ -800,9 +821,9 @@ class _MapScreenState extends State<MapScreen> {
           // Show route info
           final duration = legs['duration']['text'];
           final distance = legs['distance']['text'];
-          
+
           _showSnackBar('$distance • $duration');
-          
+
           // Show turn-by-turn instructions
           _showTurnByTurnDirections(legs['steps']);
         }
@@ -866,9 +887,7 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
 
-    mapController?.animateCamera(
-      CameraUpdate.newLatLngBounds(bounds, 100),
-    );
+    mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
   }
 
   // Show turn-by-turn directions panel
@@ -937,7 +956,8 @@ class _MapScreenState extends State<MapScreen> {
                   controller: scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: steps.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final step = steps[index];
                     final instruction = _stripHtml(step['html_instructions']);
@@ -974,10 +994,7 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       subtitle: Text(
                         distance,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                       trailing: Icon(
                         _getManeuverIcon(maneuver),
@@ -1031,7 +1048,7 @@ class _MapScreenState extends State<MapScreen> {
 
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -1043,29 +1060,446 @@ class _MapScreenState extends State<MapScreen> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(fontSize: 14),
-              ),
+              child: Text(message, style: const TextStyle(fontSize: 14)),
             ),
           ],
         ),
         backgroundColor: isError ? Colors.red[700] : Colors.green[700],
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 3),
       ),
     );
   }
 
+  // === Trip Route Integration ===
+
+  Future<LatLng?> _geocodeAddress(String address) async {
+    // If already lat,lng
+    if (address.contains(',')) {
+      final parts = address.split(',');
+      if (parts.length == 2) {
+        final lat = double.tryParse(parts[0].trim());
+        final lng = double.tryParse(parts[1].trim());
+        if (lat != null && lng != null) return LatLng(lat, lng);
+      }
+    }
+    // Current location
+    if (address.toLowerCase().contains('current location')) {
+      if (currentLocation != null) return currentLocation;
+      try {
+        Position pos = await Geolocator.getCurrentPosition();
+        return LatLng(pos.latitude, pos.longitude);
+      } catch (_) {
+        return null;
+      }
+    }
+    // Geocode via API
+    try {
+      final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/geocode/json'
+        '?address=${Uri.encodeComponent(address)}'
+        '&key=$apiKey',
+      );
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['results'] != null && data['results'].isNotEmpty) {
+          final loc = data['results'][0]['geometry']['location'];
+          return LatLng(loc['lat'], loc['lng']);
+        }
+      }
+    } catch (e) {
+      debugPrint('Geocode error: $e');
+    }
+    return null;
+  }
+
+  /// Public method: called from outside to show a trip route on this map
+  Future<void> showTripRoute({
+    required String startLocation,
+    required String destination,
+    required List<dynamic> routeSegments,
+  }) async {
+    setState(() {
+      isLoadingDirections = true;
+      _showingTripRoute = true;
+      _tripDestination = destination;
+    });
+
+    try {
+      final startLatLng = await _geocodeAddress(startLocation);
+      final destLatLng = await _geocodeAddress(destination);
+
+      if (startLatLng == null || destLatLng == null) {
+        _showSnackBar('Could not locate start or destination', isError: true);
+        setState(() {
+          isLoadingDirections = false;
+          _showingTripRoute = false;
+        });
+        return;
+      }
+
+      // Collect waypoints and stop info from charge_meal segments
+      List<LatLng> waypoints = [];
+      List<Map<String, dynamic>> stops = [];
+
+      for (var seg in routeSegments) {
+        if (seg['segment_type'] == 'charge_meal') {
+          final addr = seg['address']?.toString() ?? '';
+          if (addr.isNotEmpty) {
+            final wp = await _geocodeAddress(addr);
+            if (wp != null) {
+              waypoints.add(wp);
+              stops.add({
+                'position': wp,
+                'name': seg['location_name'] ?? 'Charging Stop',
+                'charging_time': seg['charging_time'] ?? '',
+                'restaurant_name': seg['restaurant_name'] ?? '',
+                'meal_type': seg['meal_type'] ?? '',
+              });
+            }
+          }
+        }
+      }
+
+      // Build directions URL with waypoints
+      String waypointsParam = '';
+      if (waypoints.isNotEmpty) {
+        final wpStr = waypoints
+            .map((w) => '${w.latitude},${w.longitude}')
+            .join('|');
+        waypointsParam = '&waypoints=$wpStr';
+      }
+
+      final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/directions/json'
+        '?origin=${startLatLng.latitude},${startLatLng.longitude}'
+        '&destination=${destLatLng.latitude},${destLatLng.longitude}'
+        '$waypointsParam'
+        '&mode=driving'
+        '&units=metric'
+        '&key=$apiKey',
+      );
+
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['routes'] != null && data['routes'].isNotEmpty) {
+          final route = data['routes'][0];
+          final polylineEncoded = route['overview_polyline']['points'];
+          final legs = route['legs'] as List;
+
+          int totalDistM = 0;
+          int totalDurS = 0;
+          for (var leg in legs) {
+            totalDistM += (leg['distance']['value'] as int);
+            totalDurS += (leg['duration']['value'] as int);
+          }
+
+          final points = _decodePolyline(polylineEncoded);
+
+          // Clear existing station markers & polylines
+          setState(() {
+            markers.removeWhere((m) => m.markerId.value != 'current_location');
+            polylines.clear();
+
+            // Add route polyline
+            polylines.add(
+              Polyline(
+                polylineId: const PolylineId('trip_route'),
+                points: points,
+                color: const Color(0xFF4285F4),
+                width: 5,
+                startCap: Cap.roundCap,
+                endCap: Cap.roundCap,
+                jointType: JointType.round,
+              ),
+            );
+
+            // Start marker
+            markers.add(
+              Marker(
+                markerId: const MarkerId('trip_start'),
+                position: startLatLng,
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueGreen,
+                ),
+                infoWindow: InfoWindow(title: 'Start', snippet: startLocation),
+              ),
+            );
+
+            // Destination marker
+            markers.add(
+              Marker(
+                markerId: const MarkerId('trip_dest'),
+                position: destLatLng,
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueRed,
+                ),
+                infoWindow: InfoWindow(
+                  title: 'Destination',
+                  snippet: destination,
+                ),
+              ),
+            );
+
+            // Charging station & restaurant markers
+            for (int i = 0; i < stops.length; i++) {
+              final stop = stops[i];
+              final pos = stop['position'] as LatLng;
+
+              // Charging station marker (orange)
+              markers.add(
+                Marker(
+                  markerId: MarkerId('trip_charge_$i'),
+                  position: pos,
+                  icon:
+                      customEVIcon ??
+                      BitmapDescriptor.defaultMarkerWithHue(
+                        BitmapDescriptor.hueOrange,
+                      ),
+                  infoWindow: InfoWindow(
+                    title: '⚡ ${stop['name']}',
+                    snippet: 'Charging: ${stop['charging_time']}',
+                  ),
+                ),
+              );
+            }
+
+            _tripStops = stops;
+            _tripDistance = totalDistM >= 1000
+                ? '${(totalDistM / 1000).toStringAsFixed(1)} km'
+                : '$totalDistM m';
+            final hours = totalDurS ~/ 3600;
+            final mins = (totalDurS % 3600) ~/ 60;
+            _tripDuration = hours > 0 ? '${hours}h ${mins}m' : '${mins} min';
+
+            isLoadingDirections = false;
+          });
+
+          // Fit map to show entire route
+          if (points.length > 2) {
+            double minLat = points.first.latitude;
+            double maxLat = points.first.latitude;
+            double minLng = points.first.longitude;
+            double maxLng = points.first.longitude;
+            for (var p in points) {
+              if (p.latitude < minLat) minLat = p.latitude;
+              if (p.latitude > maxLat) maxLat = p.latitude;
+              if (p.longitude < minLng) minLng = p.longitude;
+              if (p.longitude > maxLng) maxLng = p.longitude;
+            }
+            mapController?.animateCamera(
+              CameraUpdate.newLatLngBounds(
+                LatLngBounds(
+                  southwest: LatLng(minLat, minLng),
+                  northeast: LatLng(maxLat, maxLng),
+                ),
+                80,
+              ),
+            );
+          }
+        } else {
+          _showSnackBar('No route found', isError: true);
+          setState(() {
+            isLoadingDirections = false;
+            _showingTripRoute = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Trip route error: $e');
+      _showSnackBar('Failed to load route', isError: true);
+      setState(() {
+        isLoadingDirections = false;
+        _showingTripRoute = false;
+      });
+    }
+  }
+
+  void _clearTripRoute() {
+    setState(() {
+      _showingTripRoute = false;
+      _tripDistance = '';
+      _tripDuration = '';
+      _tripDestination = '';
+      _tripStops = [];
+      polylines.clear();
+      markers.removeWhere((m) => m.markerId.value.startsWith('trip_'));
+    });
+    // Reload nearby stations
+    loadNearbyStations();
+  }
+
+  Widget _buildTripRoutePanel() {
+    return Positioned(
+      bottom: 40,
+      left: 16,
+      right: 80,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4285F4).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.navigation_rounded,
+                    color: Color(0xFF4285F4),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _tripDestination,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            _tripDistance,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            '  •  ',
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            _tripDuration,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF4285F4),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Close button
+                InkWell(
+                  onTap: _clearTripRoute,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.close, size: 18, color: Colors.red[400]),
+                  ),
+                ),
+              ],
+            ),
+            // Stops chips
+            if (_tripStops.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 32,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _tripStops.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 6),
+                  itemBuilder: (context, index) {
+                    final stop = _tripStops[index];
+                    return _buildTripStopChip(stop, index);
+                  },
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTripStopChip(Map<String, dynamic> stop, int index) {
+    final hasRestaurant =
+        (stop['restaurant_name'] ?? '').toString().isNotEmpty &&
+        stop['restaurant_name'].toString().toLowerCase() != 'null';
+
+    return GestureDetector(
+      onTap: () {
+        final pos = stop['position'] as LatLng;
+        mapController?.animateCamera(CameraUpdate.newLatLngZoom(pos, 15));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.ev_station, size: 14, color: Color(0xFF10B981)),
+            const SizedBox(width: 4),
+            Text(
+              stop['name'].toString().length > 15
+                  ? '${stop['name'].toString().substring(0, 15)}...'
+                  : stop['name'],
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF10B981),
+              ),
+            ),
+            if (hasRestaurant) ...[
+              const SizedBox(width: 4),
+              const Icon(Icons.restaurant, size: 12, color: Color(0xFF9C27B0)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final evStationCount = markers.where((m) => 
-      m.markerId.value != 'current_location'
-    ).length;
+    final evStationCount = markers
+        .where((m) => m.markerId.value != 'current_location')
+        .length;
 
     return Scaffold(
       body: Stack(
@@ -1088,12 +1522,26 @@ class _MapScreenState extends State<MapScreen> {
             },
             onTap: (_) {
               // Clear selected station when tapping map
-              setState(() {
-                selectedStation = null;
-                polylines.clear();
-              });
+              if (!_showingTripRoute) {
+                setState(() {
+                  selectedStation = null;
+                  polylines.clear();
+                });
+              }
             },
           ),
+
+          // Trip route loading overlay
+          if (isLoadingDirections && _showingTripRoute)
+            Container(
+              color: Colors.black26,
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF4285F4),
+                  strokeWidth: 3,
+                ),
+              ),
+            ),
 
           // Current Location Button
           Positioned(
@@ -1176,7 +1624,10 @@ class _MapScreenState extends State<MapScreen> {
               top: MediaQuery.of(context).padding.top + 16,
               left: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF10B981), Color(0xFF059669)],
@@ -1193,11 +1644,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.ev_station,
-                      color: Colors.white,
-                      size: 18,
-                    ),
+                    const Icon(Icons.ev_station, color: Colors.white, size: 18),
                     const SizedBox(width: 8),
                     Text(
                       '$evStationCount within ${SEARCH_RADIUS_KM.toInt()}km',
@@ -1212,6 +1659,9 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
 
+          // Trip route info panel
+          if (_showingTripRoute) _buildTripRoutePanel(),
+
           if (isLoadingStations)
             Positioned(
               bottom: 140,
@@ -1219,7 +1669,10 @@ class _MapScreenState extends State<MapScreen> {
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF10B981), Color(0xFF059669)],
@@ -1241,7 +1694,9 @@ class _MapScreenState extends State<MapScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       ),
                       SizedBox(width: 16),
