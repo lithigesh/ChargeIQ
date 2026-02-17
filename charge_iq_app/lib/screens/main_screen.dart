@@ -7,6 +7,10 @@ import 'package:charge_iq_app/screens/profile_screen.dart';
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
+  // Static key to access MainScreen state from anywhere
+  static final GlobalKey<_MainScreenState> mainKey =
+      GlobalKey<_MainScreenState>();
+
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
@@ -14,16 +18,44 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    MapScreen(),
-    StationsListScreen(),
-    TripPlanningScreen(),
-    ProfileScreen(),
-  ];
+  final GlobalKey<MapScreenState> _mapKey = GlobalKey<MapScreenState>();
+
+  late final List<Widget> _widgetOptions;
+
+  @override
+  void initState() {
+    super.initState();
+    _widgetOptions = <Widget>[
+      MapScreen(key: _mapKey),
+      const StationsListScreen(),
+      const TripPlanningScreen(),
+      const ProfileScreen(),
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+  }
+
+  /// Switch to map tab and display the given trip route
+  void showRouteOnMap({
+    required String startLocation,
+    required String destination,
+    required List<dynamic> routeSegments,
+  }) {
+    // Switch to map tab
+    setState(() {
+      _selectedIndex = 0;
+    });
+    // Trigger route display on map after frame renders
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mapKey.currentState?.showTripRoute(
+        startLocation: startLocation,
+        destination: destination,
+        routeSegments: routeSegments,
+      );
     });
   }
 
