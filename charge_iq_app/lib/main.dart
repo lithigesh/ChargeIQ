@@ -209,7 +209,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
 
         if (hasData || currentUser != null) {
-          return const MainScreen(key: ValueKey('home'));
+          return MainScreen(key: MainScreen.mainKey);
         }
 
         return const SignInPage(key: ValueKey('signin'));

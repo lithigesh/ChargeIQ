@@ -63,7 +63,7 @@ class _SignInPageState extends State<SignInPage>
           print("AuthWrapper didn't switch, forcing navigation.");
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) => const MainScreen(key: ValueKey('home')),
+              builder: (_) => MainScreen(key: MainScreen.mainKey),
             ),
           );
         }
@@ -107,7 +107,7 @@ class _SignInPageState extends State<SignInPage>
           );
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) => const MainScreen(key: ValueKey('home')),
+              builder: (_) => MainScreen(key: MainScreen.mainKey),
             ),
           );
         }

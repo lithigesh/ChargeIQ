@@ -6,6 +6,7 @@ import '../models/vehicle.dart';
 import '../services/gemini_service.dart';
 import '../services/trip_service.dart';
 import '../services/directions_service.dart';
+import 'main_screen.dart';
 
 class TripResultScreen extends StatefulWidget {
   final String startLocation;
@@ -35,7 +36,10 @@ class TripResultScreen extends StatefulWidget {
   State<TripResultScreen> createState() => _TripResultScreenState();
 }
 
-class _TripResultScreenState extends State<TripResultScreen> {
+class _TripResultScreenState extends State<TripResultScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _directionsBtnController;
+  late Animation<double> _directionsBtnAnimation;
   final GeminiService _geminiService = GeminiService();
   final TripService _tripService = TripService();
   final DirectionsService _directionsService = DirectionsService();
@@ -51,14 +55,29 @@ class _TripResultScreenState extends State<TripResultScreen> {
   @override
   void initState() {
     super.initState();
+    _directionsBtnController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _directionsBtnAnimation = CurvedAnimation(
+      parent: _directionsBtnController,
+      curve: Curves.easeOutBack,
+    );
     _fetchCurrentCity();
     if (widget.preLoadedPlan != null) {
       _generatedPlan = widget.preLoadedPlan;
       _isLoading = false;
       _isSaved = true;
+      _directionsBtnController.forward();
     } else {
       _generatePlan();
     }
+  }
+
+  @override
+  void dispose() {
+    _directionsBtnController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCurrentCity() async {
@@ -129,6 +148,7 @@ class _TripResultScreenState extends State<TripResultScreen> {
           }
           _isLoading = false;
         });
+        _directionsBtnController.forward();
       }
     } catch (e) {
       if (mounted) {
@@ -369,49 +389,128 @@ class _TripResultScreenState extends State<TripResultScreen> {
     );
   }
 
+  void _openNavigation(List<dynamic> segments) {
+    // Pop back to the main screen and show route on the map
+    Navigator.of(context).popUntil((route) => route.isFirst);
+
+    // Tell the MainScreen to switch to map tab and display the route
+    MainScreen.mainKey.currentState?.showRouteOnMap(
+      startLocation: widget.startLocation,
+      destination: widget.destination,
+      routeSegments: segments,
+    );
+  }
+
   Widget _buildSummaryCard(Map<String, dynamic> plan) {
+    final segments = plan['route_segments'] as List? ?? [];
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      color: Colors.white,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _buildStatChip(
-              Icons.directions_car,
-              _realTimeDistance ?? _cleanText(plan['total_distance'] ?? 'N/A'),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Stats row
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatChip(
+                  Icons.directions_car,
+                  _realTimeDistance ??
+                      _cleanText(plan['total_distance'] ?? 'N/A'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildStatChip(
+                  Icons.timer,
+                  _realTimeDuration ??
+                      _cleanText(plan['total_duration'] ?? 'N/A'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Directions button
+          ScaleTransition(
+            scale: _directionsBtnAnimation,
+            child: Material(
+              elevation: 2,
+              shadowColor: const Color(0xFF4285F4).withOpacity(0.3),
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => _openNavigation(segments),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF4285F4), Color(0xFF3367D6)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.navigation_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'View Directions on Map',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(width: 12),
-            _buildStatChip(
-              Icons.timer,
-              _realTimeDuration ?? _cleanText(plan['total_duration'] ?? 'N/A'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStatChip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFFF0F4FF),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE0E7FF)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 16, color: const Color(0xFF1565C0)),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF1565C0),
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
+          Icon(icon, size: 18, color: const Color(0xFF1565C0)),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF1565C0),
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
@@ -471,9 +570,8 @@ class _TripResultScreenState extends State<TripResultScreen> {
 
   String _cleanText(String text) {
     String clean = text.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
-    if (clean.toLowerCase().contains('mi')) {
-      clean = clean.replaceAll('mi', 'km').replaceAll('miles', 'km');
-    }
+    // Replace standalone 'mi' or 'miles' with 'km' (but NOT 'min')
+    clean = clean.replaceAll(RegExp(r'\bmiles?\b'), 'km');
     return clean;
   }
 
@@ -528,33 +626,57 @@ class _TripResultScreenState extends State<TripResultScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(
-            dense: true,
-            title: Text(
-              segment['location_name'] ?? 'Stop',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(
-              segment['address'] ?? '',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                segment['charging_time'] ?? '',
-                style: const TextStyle(
-                  color: Color(0xFF2E7D32),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  segment['location_name'] ?? 'Stop',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  segment['address'] ?? '',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.timer_outlined,
+                      size: 16,
+                      color: Color(0xFF2E7D32),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Est. ${segment['charging_time'] ?? 'N/A'}',
+                        style: const TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const Divider(height: 1),
