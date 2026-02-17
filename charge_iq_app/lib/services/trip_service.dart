@@ -12,9 +12,14 @@ class TripService {
   Future<void> saveTrip({
     required String startLocation,
     required String destination,
+    required String vehicleId,
     required int evRange,
     required String vehicleType,
     required String planData, // The raw JSON plan string
+    double? startLat,
+    double? startLng,
+    double? destLat,
+    double? destLng,
   }) async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -33,10 +38,15 @@ class TripService {
         userId: user.uid,
         startLocation: startLocation,
         destination: destination,
+        vehicleId: vehicleId,
         evRange: evRange,
         vehicleType: vehicleType,
         planData: planData,
         timestamp: DateTime.now(),
+        startLat: startLat,
+        startLng: startLng,
+        destLat: destLat,
+        destLng: destLng,
       );
 
       await tripRef.set(trip.toMap());
