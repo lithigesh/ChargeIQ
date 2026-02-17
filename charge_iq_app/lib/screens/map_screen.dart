@@ -25,6 +25,7 @@ class _MapScreenState extends State<MapScreen> {
   bool isLoadingStations = false;
   bool isLoadingDirections = false;
   LatLng? currentLocation;
+  String? currentAddressShort;
   BitmapDescriptor? customEVIcon;
   BitmapDescriptor? customLocationIcon;
   Map<String, dynamic>? selectedStation;
@@ -164,44 +165,185 @@ class _MapScreenState extends State<MapScreen> {
         status = await Permission.location.request();
       }
 
-      if (status.isGranted) {
-        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-        if (!serviceEnabled) {
-          _showSnackBar('Please enable location services', isError: true);
-          return;
-        }
-
-        Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
-
-        setState(() {
-          currentLocation = LatLng(position.latitude, position.longitude);
-          markers.add(
-            Marker(
-              markerId: const MarkerId('current_location'),
-              position: currentLocation!,
-              icon: customLocationIcon ?? BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueBlue,
-              ),
-              infoWindow: const InfoWindow(
-                title: '📍 Your Location',
-              ),
-            ),
-          );
-        });
-
-        mapController?.animateCamera(
-          CameraUpdate.newLatLngZoom(currentLocation!, 13),
-        );
-
-        // Auto-load nearby stations within 30km
-        await loadNearbyStations();
+      if (status.isPermanentlyDenied) {
+        await _showPermissionDialog();
+        return;
       }
+
+      if (!status.isGranted) {
+        await _showPermissionDialog();
+        return;
+      }
+
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        await _showLocationServicesDialog();
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        currentLocation = LatLng(position.latitude, position.longitude);
+        markers.add(
+          Marker(
+            markerId: const MarkerId('current_location'),
+            position: currentLocation!,
+            icon: customLocationIcon ?? BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueBlue,
+            ),
+            infoWindow: InfoWindow(
+              title: 'Your Location',
+              snippet: currentAddressShort,
+            ),
+          ),
+        );
+      });
+
+      mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(currentLocation!, 13),
+      );
+
+      await _updateCurrentLocationAddress();
+
+      // Auto-load nearby stations within 30km
+      await loadNearbyStations();
     } catch (e) {
       debugPrint('Error getting location: $e');
       _showSnackBar('Unable to get your location', isError: true);
     }
+  }
+
+  Future<void> _showPermissionDialog() async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Location Permission Required'),
+        content: const Text(
+          'Enable location permission in Settings to find nearby chargers.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Not Now'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showLocationServicesDialog() async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Location Services Off'),
+        content: const Text(
+          'Turn on location services to get your current position.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Not Now'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await Geolocator.openLocationSettings();
+            },
+            child: const Text('Enable'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateCurrentLocationAddress() async {
+    if (currentLocation == null) return;
+
+    try {
+      final url = "https://maps.googleapis.com/maps/api/geocode/json"
+          "?latlng=${currentLocation!.latitude},${currentLocation!.longitude}"
+          "&key=$apiKey";
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final results = json['results'] as List<dynamic>;
+
+        if (results.isNotEmpty) {
+          final shortAddress = _buildShortAddress(results[0]);
+
+          if (!mounted) return;
+          setState(() {
+            currentAddressShort = shortAddress;
+            markers.removeWhere((m) => m.markerId.value == 'current_location');
+            markers.add(
+              Marker(
+                markerId: const MarkerId('current_location'),
+                position: currentLocation!,
+                icon: customLocationIcon ??
+                    BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueBlue,
+                    ),
+                infoWindow: InfoWindow(
+                  title: 'Your Location',
+                  snippet: currentAddressShort,
+                ),
+              ),
+            );
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching short address: $e');
+    }
+  }
+
+  String _buildShortAddress(Map<String, dynamic> result) {
+    final components = result['address_components'] as List<dynamic>?;
+    if (components == null || components.isEmpty) {
+      return (result['formatted_address'] ?? '').toString();
+    }
+
+    String? locality;
+    String? adminArea2;
+    String? adminArea1;
+
+    for (final component in components) {
+      final types = (component['types'] as List<dynamic>).cast<String>();
+      if (types.contains('locality')) {
+        locality = component['long_name']?.toString();
+      } else if (types.contains('administrative_area_level_2')) {
+        adminArea2 = component['long_name']?.toString();
+      } else if (types.contains('administrative_area_level_1')) {
+        adminArea1 = component['short_name']?.toString();
+      }
+    }
+
+    final parts = <String>[];
+    if (locality != null && locality!.isNotEmpty) parts.add(locality!);
+    if (adminArea2 != null && adminArea2!.isNotEmpty) parts.add(adminArea2!);
+    if (adminArea1 != null && adminArea1!.isNotEmpty) parts.add(adminArea1!);
+
+    if (parts.isEmpty) {
+      return (result['formatted_address'] ?? '').toString();
+    }
+
+    return parts.join(', ');
   }
 
   // Load stations within 30km of user location
