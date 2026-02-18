@@ -9,10 +9,17 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'screens/splash_screen.dart';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'web_utils.dart' if (dart.library.io) 'web_utils_stub.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: ".env");
+
+  if (kIsWeb) {
+    injectMapsScript();
+  }
 
   runApp(const MyApp());
 }
