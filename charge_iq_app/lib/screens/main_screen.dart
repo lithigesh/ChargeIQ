@@ -131,11 +131,17 @@ class _MainScreenState extends State<MainScreen> {
               width: 65,
               height: 65,
               child: FloatingActionButton(
-                onPressed: () {
-                  // Action for the center button (maybe quick charge or map center)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Quick Charge action')),
-                  );
+                onPressed: () async {
+                  // Quick Charge: Find and navigate to nearest EV charging station
+                  if (_selectedIndex == 0) {
+                    _mapKey.currentState?.quickCharge();
+                  } else {
+                    _onItemTapped(0);
+                    await Future.delayed(const Duration(milliseconds: 500));
+                    if (mounted) {
+                      _mapKey.currentState?.quickCharge();
+                    }
+                  }
                 },
                 backgroundColor: const Color(0xFF00D26A),
                 elevation: 4,

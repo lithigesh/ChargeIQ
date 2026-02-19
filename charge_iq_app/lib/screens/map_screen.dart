@@ -474,6 +474,140 @@ class MapScreenState extends State<MapScreen> {
     }
   }
 
+  /// Quick Charge Action - Find and route to nearest EV charging station
+  Future<void> quickCharge() async {
+    // Step 1: Ensure we have current location
+    if (currentLocation == null) {
+      _showSnackBar('Getting your location...', isError: false);
+      await getCurrentLocation();
+      if (currentLocation == null) {
+        _showSnackBar('Unable to get your location', isError: true);
+        return;
+      }
+    }
+
+    // Step 2: Load nearby stations
+    setState(() {
+      isLoadingStations = true;
+    });
+
+    try {
+      debugPrint('⚡ Quick Charge: Finding nearest station within 30km...');
+
+      List<Map<String, dynamic>> nearbyStations = [];
+
+      // Check cache first
+      if (await _isCacheValid()) {
+        final cached = await _loadCachedStations();
+        if (cached != null && cached.isNotEmpty) {
+          nearbyStations = cached.where((station) {
+            final stationPos = LatLng(station['lat'], station['lng']);
+            final distance = _calculateDistance(currentLocation!, stationPos);
+            return distance <= SEARCH_RADIUS_KM;
+          }).toList();
+        }
+      }
+
+      // If no cached stations, fetch from API
+      if (nearbyStations.isEmpty) {
+        final radiusMeters = (SEARCH_RADIUS_KM * 1000).toInt();
+        final url =
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+            "?location=${currentLocation!.latitude},${currentLocation!.longitude}"
+            "&radius=$radiusMeters"
+            "&keyword=ev charging station electric vehicle"
+            "&key=$apiKey";
+
+        final response = await http.get(Uri.parse(url));
+
+        if (response.statusCode == 200) {
+          final json = jsonDecode(response.body);
+          final results = json['results'] as List;
+
+          for (var place in results) {
+            final lat = place['geometry']['location']['lat'];
+            final lng = place['geometry']['location']['lng'];
+            final name = place['name'];
+            final id = place['place_id'];
+            final vicinity = place['vicinity'] ?? '';
+            final rating = place['rating']?.toDouble() ?? 0.0;
+            final userRatingsTotal = place['user_ratings_total'] ?? 0;
+            final isOpen = place['opening_hours']?['open_now'];
+
+            final stationPos = LatLng(lat, lng);
+            final distance = _calculateDistance(currentLocation!, stationPos);
+
+            if (distance <= SEARCH_RADIUS_KM) {
+              nearbyStations.add({
+                'id': id,
+                'name': name,
+                'lat': lat,
+                'lng': lng,
+                'vicinity': vicinity,
+                'rating': rating,
+                'userRatingsTotal': userRatingsTotal,
+                'isOpen': isOpen,
+                'distance': distance,
+              });
+            }
+          }
+
+          // Sort by distance (closest first)
+          nearbyStations.sort(
+            (a, b) =>
+                (a['distance'] as double).compareTo(b['distance'] as double),
+          );
+
+          if (nearbyStations.isNotEmpty) {
+            await _saveStationsToCache(nearbyStations);
+          }
+        }
+      }
+
+      // Step 3: Handle results
+      if (nearbyStations.isEmpty) {
+        _showSnackBar(' No charging stations found within 30km', isError: true);
+        setState(() {
+          isLoadingStations = false;
+        });
+        return;
+      }
+
+      // Display all nearby stations on map
+      _displayStations(nearbyStations);
+
+      // Step 4: Get the nearest station
+      final nearestStation = nearbyStations.first;
+      debugPrint(
+        '⚡ Nearest station: ${nearestStation['name']} '
+        '(${nearestStation['distance'].toStringAsFixed(1)}km away)',
+      );
+
+      // Step 5: Show the nearest station details card
+      _showStationDetails(nearestStation);
+
+      // Center map on nearest station
+      final nearestPos = LatLng(nearestStation['lat'], nearestStation['lng']);
+      mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(nearestPos, 15),
+      );
+
+      _showSnackBar(
+        '🎯 Nearest: ${nearestStation['name']} (${nearestStation['distance'].toStringAsFixed(1)}km)',
+        isError: false,
+      );
+    } catch (e) {
+      debugPrint('Quick Charge Error: $e');
+      _showSnackBar('Unable to find charging stations', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingStations = false;
+        });
+      }
+    }
+  }
+
   void _displayStations(List<Map<String, dynamic>> stations) {
     if (!mounted) return;
 
