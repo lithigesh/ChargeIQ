@@ -7,7 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:math' show cos, sqrt, asin, Random;
+import 'dart:math' show cos, sqrt, asin;
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -571,44 +571,59 @@ class MapScreenState extends State<MapScreen> {
         return;
       }
 
-      // Simulate real-time data (Price & Availability) and Calculate Score
-      final random = Random();
+      // Calculate Score based on available data
+      // If specific real-time data is missing (e.g. ports, price), we degrade gracefully
+      // by relying on standard metrics: Open Status, Rating, Review Count, and Distance.
+
       for (var station in nearbyStations) {
-        // Only generate if not already present (e.g. from cache if we cached it)
-        // But for "live" feel, let's regenerate or ensure they exist.
+        // NOTE: Real-time 'available_ports' and 'price' are not reliably available
+        // from standard free APIs. We proceed with what we have.
+        // If your backend or a premium API provides this, populate it here.
 
-        // Mock Availability: 0 to 10 ports
-        if (!station.containsKey('available_ports')) {
-          station['available_ports'] = random.nextInt(11);
-        }
-
-        // Mock Price: $0.20 to $0.50 per kWh
-        if (!station.containsKey('price')) {
-          station['price'] = 0.20 + (random.nextDouble() * 0.30);
-        }
-
-        final int available = station['available_ports'];
-        final double price = station['price'];
+        final int? available = station['available_ports'];
+        final double? price = station['price'];
         final double rating = station['rating'] ?? 0.0;
+        final int ratingCount = station['userRatingsTotal'] ?? 0;
         final double distance = station['distance'];
         final bool? isOpen = station['isOpen'];
 
-        // Scoring Algorithm:
-        // 1. Open Status: Critical. Closed stations get massive penalty.
-        // 2. Availability: More ports = Better. Weight: 2.0 (0-20 pts)
-        // 3. Price: Lower is better. Price is small (0.2-0.5), so multiply by 40 to make impact comparable. (8-20 pts penalty)
-        // 4. Rating: Higher is better. Weight: 2.0 (0-10 pts)
-        // 5. Distance: Lower is better. Weight: 0.5 (10km = 5 pts penalty)
+        // Scoring Algorithm (Graceful Fallback Mode):
+        // 1. Open Status: Critical.
+        // 2. Rating: Very Important when other data is missing.
+        // 3. Distance: Always distinct.
+        // 4. Popularity: (ratingCount) - adds confidence.
 
         double score = 0.0;
 
-        if (isOpen == true) score += 50.0;
-        if (isOpen == false) score -= 100.0; // Heavily penalize closed
+        // -- Status --
+        if (isOpen == true)
+          score += 100.0; // Huge bonus for being definitely open
+        if (isOpen == false) score -= 200.0; // Huge penalty for being closed
 
-        score += (available * 2.0);
-        score += (rating * 2.0);
-        score -= (price * 40.0);
-        score -= (distance * 0.5);
+        // -- Quality --
+        // Weight rating heavily (0-5 stars -> 0-50 pts)
+        score += (rating * 10.0);
+
+        // Boost for popularity (logarithmic to avoid outlier skew)
+        if (ratingCount > 0) {
+          score += (sqrt(ratingCount) * 0.5); // e.g. 100 reviews -> +5 pts
+        }
+
+        // -- Distance --
+        // Penalize distance (e.g. 10km away -> -20 pts)
+        score -= (distance * 2.0);
+
+        // -- Real-time Data (If available) --
+        if (available != null) {
+          score += (available * 5.0); // Reward known availability
+        }
+
+        if (price != null) {
+          score -= (price * 100.0); // Penalize price if known
+        } else {
+          // If price unknown, we don't penalize, or assumes average.
+          // Leaving at 0 (neutral) is safer than guessing.
+        }
 
         station['score'] = score;
       }
@@ -626,12 +641,18 @@ class MapScreenState extends State<MapScreen> {
       // Step 4: Get the BEST station
       final bestStation = nearbyStations.first;
 
+      // Safe formatting for debug
+      final debugPrice = bestStation['price'] != null
+          ? '\$${(bestStation['price']).toStringAsFixed(2)}'
+          : 'N/A';
+      final debugPorts = bestStation['available_ports']?.toString() ?? 'N/A';
+
       debugPrint(
         '⚡ Best station: ${bestStation['name']} '
         '(Score: ${bestStation['score'].toStringAsFixed(1)}, '
         'Dist: ${bestStation['distance'].toStringAsFixed(1)}km, '
-        'Ports: ${bestStation['available_ports']}, '
-        'Price: \$${bestStation['price'].toStringAsFixed(2)})',
+        'Ports: $debugPorts, '
+        'Price: $debugPrice)',
       );
 
       // Step 5: Show the best station details card
@@ -642,7 +663,7 @@ class MapScreenState extends State<MapScreen> {
       mapController?.animateCamera(CameraUpdate.newLatLngZoom(bestPos, 15));
 
       _showSnackBar(
-        '� Best Match: ${bestStation['name']} (${bestStation['distance'].toStringAsFixed(1)}km)',
+        '🏆 Best Match: ${bestStation['name']} (${bestStation['distance'].toStringAsFixed(1)}km)',
         isError: false,
       );
     } catch (e) {
