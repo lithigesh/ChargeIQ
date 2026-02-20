@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' show cos, sqrt, asin;
+import 'package:charge_iq_app/screens/google_nav_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -35,6 +36,7 @@ class MapScreenState extends State<MapScreen> {
   String _tripDistance = '';
   String _tripDuration = '';
   String _tripDestination = '';
+  LatLng? _tripDestLatLng;
   List<Map<String, dynamic>> _tripStops = [];
 
   // Cache settings
@@ -661,11 +663,6 @@ class MapScreenState extends State<MapScreen> {
       // Center map on best station
       final bestPos = LatLng(bestStation['lat'], bestStation['lng']);
       mapController?.animateCamera(CameraUpdate.newLatLngZoom(bestPos, 15));
-
-      _showSnackBar(
-        '🏆 Best Match: ${bestStation['name']} (${bestStation['distance'].toStringAsFixed(1)}km)',
-        isError: false,
-      );
     } catch (e) {
       debugPrint('Quick Charge Error: $e');
       _showSnackBar('Unable to find charging stations', isError: true);
@@ -742,13 +739,9 @@ class MapScreenState extends State<MapScreen> {
           // Header
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [const Color(0xFF10B981), const Color(0xFF059669)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.only(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(24),
                 topRight: Radius.circular(24),
               ),
@@ -758,12 +751,12 @@ class MapScreenState extends State<MapScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: const Color(0xFF4285F4).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.ev_station,
-                    color: Colors.white,
+                    color: Color(0xFF4285F4),
                     size: 32,
                   ),
                 ),
@@ -775,7 +768,7 @@ class MapScreenState extends State<MapScreen> {
                       Text(
                         station['name'],
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFF1A1A2E),
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -787,14 +780,14 @@ class MapScreenState extends State<MapScreen> {
                         children: [
                           Icon(
                             Icons.location_on,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.grey[500],
                             size: 16,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '$distance km away',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.grey[600],
                               fontSize: 14,
                             ),
                           ),
@@ -979,64 +972,43 @@ class MapScreenState extends State<MapScreen> {
                 const SizedBox(height: 24),
 
                 // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: isLoadingDirections
-                            ? null
-                            : () {
-                                Navigator.pop(context);
-                                _getDirections(station);
-                              },
-                        icon: isLoadingDirections
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : const Icon(Icons.directions),
-                        label: Text(
-                          isLoadingDirections ? 'Loading...' : 'Directions',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => GoogleNavScreen(
+                            destinationLat: station['lat'] as double,
+                            destinationLng: station['lng'] as double,
+                            destinationName:
+                                station['name']?.toString() ?? 'EV Charger',
+                            destinationAddress:
+                                station['vicinity']?.toString(),
                           ),
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.navigation_rounded),
+                    label: const Text(
+                      'Navigate',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _centerOnStation(station);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[100],
-                        foregroundColor: Colors.grey[800],
-                        padding: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4285F4),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.center_focus_strong),
+                      elevation: 0,
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -1425,6 +1397,9 @@ class MapScreenState extends State<MapScreen> {
         return;
       }
 
+      // Save dest lat/lng for Google Navigation SDK
+      _tripDestLatLng = destLatLng;
+
       // Collect waypoints and stop info from charge_meal segments
       List<LatLng> waypoints = [];
       List<Map<String, dynamic>> stops = [];
@@ -1610,6 +1585,7 @@ class MapScreenState extends State<MapScreen> {
       _tripDistance = '';
       _tripDuration = '';
       _tripDestination = '';
+      _tripDestLatLng = null;
       _tripStops = [];
       polylines.clear();
       markers.removeWhere((m) => m.markerId.value.startsWith('trip_'));
@@ -1728,6 +1704,46 @@ class MapScreenState extends State<MapScreen> {
                     final stop = _tripStops[index];
                     return _buildTripStopChip(stop, index);
                   },
+                ),
+              ),
+            ],
+            // ── Navigate via Google Navigation SDK ──────────────────────
+            if (_tripDestLatLng != null) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GoogleNavScreen(
+                          destinationLat: _tripDestLatLng!.latitude,
+                          destinationLng: _tripDestLatLng!.longitude,
+                          destinationName: _tripDestination.isNotEmpty
+                              ? _tripDestination
+                              : 'Destination',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.navigation_rounded, size: 18),
+                  label: const Text(
+                    'Navigate',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4285F4),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
                 ),
               ),
             ],
@@ -1913,13 +1929,11 @@ class MapScreenState extends State<MapScreen> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF10B981), Color(0xFF059669)],
-                  ),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF10B981).withOpacity(0.3),
+                      color: Colors.black.withOpacity(0.1),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -1928,12 +1942,12 @@ class MapScreenState extends State<MapScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.ev_station, color: Colors.white, size: 18),
+                    const Icon(Icons.ev_station, color: Color(0xFF4285F4), size: 18),
                     const SizedBox(width: 8),
                     Text(
                       '$evStationCount within ${SEARCH_RADIUS_KM.toInt()}km',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFF1A1A2E),
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -1958,13 +1972,11 @@ class MapScreenState extends State<MapScreen> {
                     vertical: 16,
                   ),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF10B981), Color(0xFF059669)],
-                    ),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF10B981).withOpacity(0.4),
+                        color: Colors.black.withOpacity(0.12),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -1979,7 +1991,7 @@ class MapScreenState extends State<MapScreen> {
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
+                            Color(0xFF4285F4),
                           ),
                         ),
                       ),
@@ -1987,7 +1999,7 @@ class MapScreenState extends State<MapScreen> {
                       Text(
                         'Finding nearby stations...',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFF1A1A2E),
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),

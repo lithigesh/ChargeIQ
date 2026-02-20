@@ -15,6 +15,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -28,7 +29,7 @@ android {
         applicationId = "com.example.charge_iq_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 24  // Navigation SDK requires API 24+
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -60,7 +61,15 @@ flutter {
     source = "../.."
 }
 
+// The Google Navigation SDK bundles its own Maps SDK (play-services-maps).
+// Exclude the standalone play-services-maps artifact to avoid duplicate class errors
+// between navigation-*.aar and play-services-maps-*.aar.
+configurations.all {
+    exclude(group = "com.google.android.gms", module = "play-services-maps")
+}
+
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.0.4")
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-analytics")
 }
