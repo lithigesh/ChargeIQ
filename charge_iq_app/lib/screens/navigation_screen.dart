@@ -587,9 +587,12 @@ class _NavigationScreenState extends State<NavigationScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          children: [
           // Full-screen Google Map
           GoogleMap(
             initialCameraPosition: CameraPosition(
@@ -654,6 +657,7 @@ class _NavigationScreenState extends State<NavigationScreen>
               ),
             ),
         ],
+      ),
       ),
     );
   }

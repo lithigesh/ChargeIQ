@@ -1,0 +1,682 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:google_navigation_flutter/google_navigation_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+/// A full-screen navigation experience powered by the Google Navigation SDK.
+///
+/// **Phase 1 – Route Preview (Aerial):**
+/// Shows a top-down map with a blue polyline drawn from the user's current
+/// location to the destination.  A bottom panel displays distance / ETA and
+/// a prominent "Start Navigation" button.
+///
+/// **Phase 2 – Active Navigation:**
+/// Switches to Google's native navigation UI (turn-card, speed indicator,
+/// etc.) by enabling `NavigationUIEnabledPreference` and calling
+/// `startGuidance()`.  A red close button in the top-right corner lets the
+/// user stop and exit.
+class GoogleNavScreen extends StatefulWidget {
+  final double destinationLat;
+  final double destinationLng;
+  final String destinationName;
+  final String? destinationAddress;
+
+  const GoogleNavScreen({
+    super.key,
+    required this.destinationLat,
+    required this.destinationLng,
+    required this.destinationName,
+    this.destinationAddress,
+  });
+
+  @override
+  State<GoogleNavScreen> createState() => _GoogleNavScreenState();
+}
+
+class _GoogleNavScreenState extends State<GoogleNavScreen>
+    with TickerProviderStateMixin {
+  // ─── Navigation SDK state ────────────────────────────────────────────────
+  GoogleNavigationViewController? _navViewController;
+  bool _isSessionInitialized = false;
+  bool _isNavigating = false;
+  bool _routeSet = false;
+  // Guard: only treat NavState.stopped as arrival after guidance was confirmed active.
+  bool _guidanceActive = false;
+
+  // ─── UI state ────────────────────────────────────────────────────────────
+  bool _isLoading = true;
+  String _loadingMessage = 'Initializing Navigation…';
+  String? _errorMessage;
+  String _distance = '';
+  String _duration = '';
+
+  // ─── Animations ──────────────────────────────────────────────────────────
+  late AnimationController _panelController;
+  late Animation<double> _panelAnimation;
+
+  // ─── Location ────────────────────────────────────────────────────────────
+  StreamSubscription<Position>? _locationSub;
+
+  // ─── Lifecycle ───────────────────────────────────────────────────────────
+
+  @override
+  void initState() {
+    super.initState();
+
+    _panelController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _panelAnimation = CurvedAnimation(
+      parent: _panelController,
+      curve: Curves.easeOutCubic,
+    );
+
+    _init();
+  }
+
+  @override
+  void dispose() {
+    _locationSub?.cancel();
+    _panelController.dispose();
+    if (_isSessionInitialized) {
+      GoogleMapsNavigator.cleanup();
+    }
+    super.dispose();
+  }
+
+  // ─── Initialization ──────────────────────────────────────────────────────
+
+  Future<void> _init() async {
+    // 1. Ensure location permission is granted
+    final status = await Permission.location.status;
+    if (!status.isGranted) {
+      await Permission.location.request();
+    }
+
+    if (!mounted) return;
+
+    // 2. Accept T&C if needed
+    setState(() => _loadingMessage = 'Checking terms & conditions…');
+    try {
+      if (!await GoogleMapsNavigator.areTermsAccepted()) {
+        await GoogleMapsNavigator.showTermsAndConditionsDialog(
+          'Navigation',
+          'ChargeIQ',
+        );
+      }
+    } catch (_) {
+      // Terms dialog might fail on emulators — proceed anyway
+    }
+
+    if (!mounted) return;
+
+    // 3. Initialize the navigation session
+    setState(() => _loadingMessage = 'Starting navigation session…');
+    try {
+      await GoogleMapsNavigator.initializeNavigationSession(
+        taskRemovedBehavior: TaskRemovedBehavior.quitService,
+      );
+      if (mounted) {
+        setState(() {
+          _isSessionInitialized = true;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Could not start navigation session.\n${e.toString()}';
+        });
+      }
+    }
+  }
+
+  // ─── View callbacks ──────────────────────────────────────────────────────
+
+  Future<void> _onViewCreated(GoogleNavigationViewController controller) async {
+    _navViewController = controller;
+
+    // Ensure nav UI is hidden for the preview phase
+    await controller.setNavigationUIEnabled(false);
+    await controller.setMyLocationEnabled(true);
+
+    // Compute route
+    await _setDestinationAndPreviewRoute();
+  }
+
+  // ─── Route calculation ───────────────────────────────────────────────────
+
+  Future<void> _setDestinationAndPreviewRoute() async {
+    setState(() {
+      _loadingMessage = 'Calculating route…';
+      _isLoading = true;
+    });
+
+    final waypoint = NavigationWaypoint.withLatLngTarget(
+      title: widget.destinationName,
+      target: LatLng(latitude: widget.destinationLat, longitude: widget.destinationLng),
+    );
+
+    try {
+      final status = await GoogleMapsNavigator.setDestinations(
+        Destinations(
+          waypoints: [waypoint],
+          displayOptions: NavigationDisplayOptions(
+            showDestinationMarkers: true,
+          ),
+          routingOptions: RoutingOptions(
+            travelMode: NavigationTravelMode.driving,
+          ),
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (status == NavigationRouteStatus.statusOk) {
+        // Fetch ETA & distance
+        try {
+          final info = await GoogleMapsNavigator.getCurrentTimeAndDistance();
+          if (mounted) {
+            setState(() {
+              _distance = _formatDistance(info.distance.toInt());
+              _duration = _formatDuration(info.time.toInt());
+            });
+          }
+        } catch (_) {
+          // Fallback: leave empty — will fill in once navigation starts
+        }
+
+        // Zoom to show the full route (aerial / overview)
+        await Future.delayed(const Duration(milliseconds: 400));
+        try {
+          await _navViewController?.showRouteOverview();
+        } catch (_) {
+          // showRouteOverview may not be available on all SDK versions; ignore
+        }
+
+        if (mounted) {
+          setState(() {
+            _routeSet = true;
+            _isLoading = false;
+          });
+          _panelController.forward();
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage =
+                'Could not calculate a route to this destination.\nPlease try again.';
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Route error: ${e.toString()}';
+        });
+      }
+    }
+  }
+
+  // ─── Navigation control ──────────────────────────────────────────────────
+
+  Future<void> _startNavigation() async {
+    if (!_routeSet || _navViewController == null) return;
+
+    // Enable Google Nav UI (turn card, speed alert, etc.)
+    await _navViewController!.setNavigationUIEnabled(true);
+    // Keep map in light mode after nav UI takes over
+    await _navViewController!.setMapColorScheme(MapColorScheme.light);
+
+    // Start turn-by-turn guidance
+    await GoogleMapsNavigator.startGuidance();
+
+    // Listen for arrival (NavInfo events)
+    GoogleMapsNavigator.setNavInfoListener(_onNavInfo);
+
+    if (mounted) {
+      setState(() => _isNavigating = true);
+    }
+  }
+
+  void _onNavInfo(NavInfoEvent event) {
+    final state = event.navInfo.navState;
+
+    // Mark guidance as truly active once we see enroute or rerouting.
+    if (state == NavState.enroute || state == NavState.rerouting) {
+      _guidanceActive = true;
+    }
+
+    // Update distance while navigating.
+    final cur = event.navInfo.currentStep;
+    if (cur != null && mounted) {
+      setState(() {
+        if (cur.distanceFromPrevStepMeters != null) {
+          _distance = _formatDistance(cur.distanceFromPrevStepMeters!.toInt());
+        }
+      });
+    }
+
+    // Only treat stopped as arrival after guidance was confirmed running.
+    if (state == NavState.stopped && _guidanceActive && mounted) {
+      _guidanceActive = false;
+      _onArrived();
+    }
+  }
+
+  void _onArrived() {
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _stopNavigation() async {
+    _guidanceActive = false;
+    await GoogleMapsNavigator.stopGuidance();
+    await _navViewController?.setNavigationUIEnabled(false);
+
+    if (mounted) setState(() => _isNavigating = false);
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────
+
+  String _formatDistance(int meters) {
+    if (meters >= 1000) return '${(meters / 1000).toStringAsFixed(1)} km';
+    return '$meters m';
+  }
+
+  String _formatDuration(int seconds) {
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    if (h > 0) return '${h}h ${m}m';
+    return '$m min';
+  }
+
+  // ─── Build ───────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // ── Google Navigation View ──────────────────────────────────────
+          if (_isSessionInitialized)
+            GoogleMapsNavigationView(
+              onViewCreated: _onViewCreated,
+              initialNavigationUIEnabledPreference:
+                  NavigationUIEnabledPreference.disabled,
+              initialCameraPosition: CameraPosition(
+                target: LatLng(latitude: widget.destinationLat, longitude: widget.destinationLng),
+                zoom: 12,
+              ),
+              initialMapType: MapType.normal,
+              initialMapColorScheme: MapColorScheme.light,
+            ),
+
+          // ── Loading overlay ─────────────────────────────────────────────
+          if (_isLoading) _buildLoadingOverlay(),
+
+          // ── Error overlay ───────────────────────────────────────────────
+          if (_errorMessage != null && !_isLoading) _buildErrorOverlay(),
+
+          // ── Preview phase UI ────────────────────────────────────────────
+          if (!_isLoading && _errorMessage == null && !_isNavigating) ...[
+            _buildTopBar(),
+            if (_routeSet)
+              AnimatedBuilder(
+                animation: _panelAnimation,
+                builder: (_, child) => Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Transform.translate(
+                    offset: Offset(
+                        0, (1 - _panelAnimation.value) * 300),
+                    child: Opacity(
+                      opacity: _panelAnimation.value.clamp(0.0, 1.0),
+                      child: child,
+                    ),
+                  ),
+                ),
+                child: _buildPreviewPanel(),
+              ),
+          ],
+
+          // ── Navigating phase UI ─────────────────────────────────────────
+          if (_isNavigating) _buildStopButton(),
+        ],
+      ),
+    );
+  }
+
+  // ── Sub-widgets ──────────────────────────────────────────────────────────
+
+  Widget _buildLoadingOverlay() {
+    return const Center(
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: CircularProgressIndicator(
+          color: Color(0xFF4285F4),
+          strokeWidth: 3,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorOverlay() {
+    return Container(
+      color: Colors.black54,
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.wrong_location_outlined,
+                size: 56,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Navigation Unavailable',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _errorMessage!,
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Go Back'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _errorMessage = null;
+                          _isLoading = true;
+                        });
+                        _init();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4285F4),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Retry'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 8,
+      left: 12,
+      right: 12,
+      child: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(16),
+        shadowColor: Colors.black26,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              // Back button
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new,
+                    size: 18,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Destination info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.destinationName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF1A1A2E),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (widget.destinationAddress != null)
+                      Text(
+                        widget.destinationAddress!,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ),
+              ),
+
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewPanel() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 24,
+            offset: const Offset(0, -6),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // Info chips row
+              Row(
+                children: [
+                  _buildInfoChip(
+                    Icons.route_rounded,
+                    _distance.isNotEmpty ? _distance : '—',
+                    const Color(0xFF4285F4),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildInfoChip(
+                    Icons.access_time_filled_rounded,
+                    _duration.isNotEmpty ? _duration : '—',
+                    const Color(0xFFEA4335),
+                  ),
+
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // ── Start Navigation Button ───────────────────────────────
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _startNavigation,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4285F4),
+                    foregroundColor: Colors.white,
+                    elevation: 4,
+                    shadowColor: const Color(0xFF4285F4).withOpacity(0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.navigation_rounded, size: 22),
+                      SizedBox(width: 10),
+                      Text(
+                        'Start Navigation',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String label, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.09),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStopButton() {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 12,
+      right: 16,
+      child: Column(
+        children: [
+          Material(
+            elevation: 6,
+            shape: const CircleBorder(),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(28),
+              onTap: () async {
+                await _stopNavigation();
+                if (mounted) Navigator.pop(context);
+              },
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: Colors.red,
+                  size: 26,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Exit',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              shadows: [Shadow(blurRadius: 4, color: Colors.black54)],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
