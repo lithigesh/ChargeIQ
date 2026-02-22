@@ -474,7 +474,8 @@ class MapScreenState extends State<MapScreen> {
     }
   }
 
-  /// Quick Charge Action - Find and route to nearest EV charging station
+  /// Quick Charge Action - Find and route to the BEST EV charging station
+  /// "Best" is determined by a weighted score of: Availability, Price, Rating, and Distance.
   Future<void> quickCharge() async {
     // Step 1: Ensure we have current location
     if (currentLocation == null) {
@@ -492,7 +493,7 @@ class MapScreenState extends State<MapScreen> {
     });
 
     try {
-      debugPrint('⚡ Quick Charge: Finding nearest station within 30km...');
+      debugPrint('⚡ Quick Charge: Finding BEST station within 30km...');
 
       List<Map<String, dynamic>> nearbyStations = [];
 
@@ -503,6 +504,8 @@ class MapScreenState extends State<MapScreen> {
           nearbyStations = cached.where((station) {
             final stationPos = LatLng(station['lat'], station['lng']);
             final distance = _calculateDistance(currentLocation!, stationPos);
+            // Update distance in case location changed slightly
+            station['distance'] = distance;
             return distance <= SEARCH_RADIUS_KM;
           }).toList();
         }
@@ -552,48 +555,115 @@ class MapScreenState extends State<MapScreen> {
             }
           }
 
-          // Sort by distance (closest first)
-          nearbyStations.sort(
-            (a, b) =>
-                (a['distance'] as double).compareTo(b['distance'] as double),
-          );
-
+          // Cache the raw results
           if (nearbyStations.isNotEmpty) {
             await _saveStationsToCache(nearbyStations);
           }
         }
       }
 
-      // Step 3: Handle results
+      // Step 3: Handle results - Logic for "Best" Station
       if (nearbyStations.isEmpty) {
-        _showSnackBar(' No charging stations found within 30km', isError: true);
+        _showSnackBar('No charging stations found within 30km', isError: true);
         setState(() {
           isLoadingStations = false;
         });
         return;
       }
 
+      // Calculate Score based on available data
+      // If specific real-time data is missing (e.g. ports, price), we degrade gracefully
+      // by relying on standard metrics: Open Status, Rating, Review Count, and Distance.
+
+      for (var station in nearbyStations) {
+        // NOTE: Real-time 'available_ports' and 'price' are not reliably available
+        // from standard free APIs. We proceed with what we have.
+        // If your backend or a premium API provides this, populate it here.
+
+        final int? available = station['available_ports'];
+        final double? price = station['price'];
+        final double rating = station['rating'] ?? 0.0;
+        final int ratingCount = station['userRatingsTotal'] ?? 0;
+        final double distance = station['distance'];
+        final bool? isOpen = station['isOpen'];
+
+        // Scoring Algorithm (Graceful Fallback Mode):
+        // 1. Open Status: Critical.
+        // 2. Rating: Very Important when other data is missing.
+        // 3. Distance: Always distinct.
+        // 4. Popularity: (ratingCount) - adds confidence.
+
+        double score = 0.0;
+
+        // -- Status --
+        if (isOpen == true)
+          score += 100.0; // Huge bonus for being definitely open
+        if (isOpen == false) score -= 200.0; // Huge penalty for being closed
+
+        // -- Quality --
+        // Weight rating heavily (0-5 stars -> 0-50 pts)
+        score += (rating * 10.0);
+
+        // Boost for popularity (logarithmic to avoid outlier skew)
+        if (ratingCount > 0) {
+          score += (sqrt(ratingCount) * 0.5); // e.g. 100 reviews -> +5 pts
+        }
+
+        // -- Distance --
+        // Penalize distance (e.g. 10km away -> -20 pts)
+        score -= (distance * 2.0);
+
+        // -- Real-time Data (If available) --
+        if (available != null) {
+          score += (available * 5.0); // Reward known availability
+        }
+
+        if (price != null) {
+          score -= (price * 100.0); // Penalize price if known
+        } else {
+          // If price unknown, we don't penalize, or assumes average.
+          // Leaving at 0 (neutral) is safer than guessing.
+        }
+
+        station['score'] = score;
+      }
+
+      // Sort by Score Descending (Best First)
+      nearbyStations.sort((a, b) {
+        final scoreA = a['score'] as double;
+        final scoreB = b['score'] as double;
+        return scoreB.compareTo(scoreA);
+      });
+
       // Display all nearby stations on map
       _displayStations(nearbyStations);
 
-      // Step 4: Get the nearest station
-      final nearestStation = nearbyStations.first;
+      // Step 4: Get the BEST station
+      final bestStation = nearbyStations.first;
+
+      // Safe formatting for debug
+      final debugPrice = bestStation['price'] != null
+          ? '\$${(bestStation['price']).toStringAsFixed(2)}'
+          : 'N/A';
+      final debugPorts = bestStation['available_ports']?.toString() ?? 'N/A';
+
       debugPrint(
-        '⚡ Nearest station: ${nearestStation['name']} '
-        '(${nearestStation['distance'].toStringAsFixed(1)}km away)',
+        '⚡ Best station: ${bestStation['name']} '
+        '(Score: ${bestStation['score'].toStringAsFixed(1)}, '
+        'Dist: ${bestStation['distance'].toStringAsFixed(1)}km, '
+        'Ports: $debugPorts, '
+        'Price: $debugPrice)',
       );
 
-      // Step 5: Show the nearest station details card
-      _showStationDetails(nearestStation);
+      // Step 5: Show the best station details card
+      _showStationDetails(bestStation);
 
-      // Center map on nearest station
-      final nearestPos = LatLng(nearestStation['lat'], nearestStation['lng']);
-      mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(nearestPos, 15),
-      );
+      // Center map on best station
+      final bestPos = LatLng(bestStation['lat'], bestStation['lng']);
+      mapController?.animateCamera(CameraUpdate.newLatLngZoom(bestPos, 15));
 
       _showSnackBar(
-        '🎯 Nearest: ${nearestStation['name']} (${nearestStation['distance'].toStringAsFixed(1)}km)',
+        '🏆 Best Match: ${bestStation['name']} (${bestStation['distance'].toStringAsFixed(1)}km)',
         isError: false,
       );
     } catch (e) {
@@ -782,7 +852,87 @@ class MapScreenState extends State<MapScreen> {
                     ),
                   ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+
+                // Price and Availability (Best Match Details)
+                if (station['available_ports'] != null ||
+                    station['price'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        if (station['available_ports'] != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.blue.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.charging_station,
+                                  size: 16,
+                                  color: Colors.blue,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${station['available_ports']} Ports',
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (station['available_ports'] != null &&
+                            station['price'] != null)
+                          const SizedBox(width: 8),
+                        if (station['price'] != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.green.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.attach_money,
+                                  size: 16,
+                                  color: Colors.green,
+                                ),
+                                const SizedBox(width: 0),
+                                Text(
+                                  '${(station['price'] as double).toStringAsFixed(2)}/kWh',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
 
                 // Rating
                 if (rating > 0)
