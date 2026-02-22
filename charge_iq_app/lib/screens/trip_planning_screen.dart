@@ -98,7 +98,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
         );
         if (placemarks.isNotEmpty) {
           final placemark = placemarks.first;
-          final cityName = placemark.locality ?? placemark.subAdministrativeArea ?? 'Current Location';
+          final cityName =
+              placemark.locality ??
+              placemark.subAdministrativeArea ??
+              'Current Location';
           return {
             'name': cityName,
             'lat': position.latitude,
@@ -135,11 +138,44 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       return;
     }
 
+    // Validation: Ensure locations are within India
+    bool isIndiaLocation(String location) {
+      // Normalize string for checking
+      final normalized = location.toLowerCase();
+      // Basic check - reliable if using Google Places Autocomplete which returns "State, Country"
+      return normalized.contains('india') || normalized.contains('bharat');
+    }
+
+    if (_destinationLocationName != null &&
+        !isIndiaLocation(_destinationLocationName!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Service is currently available only within India 🇮🇳',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (!_useCurrentLocation &&
+        _startLocationName != null &&
+        !isIndiaLocation(_startLocationName!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Starting point must be within India 🇮🇳'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     // Resolve current location to city name if needed
     String finalStartLocation = _startLocationName ?? 'Current Location';
     double? finalStartLat = _startLat;
     double? finalStartLng = _startLng;
-    
+
     if (_useCurrentLocation) {
       final resolved = await _resolveCurrentLocation();
       if (resolved != null) {

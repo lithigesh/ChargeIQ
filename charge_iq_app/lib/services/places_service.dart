@@ -51,7 +51,7 @@ class PlacesService {
     if (query.isEmpty) return [];
 
     final url = Uri.parse(
-      'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$query&key=$_apiKey',
+      'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$query&components=country:in&key=$_apiKey', // Restrict to India
     );
 
     try {
