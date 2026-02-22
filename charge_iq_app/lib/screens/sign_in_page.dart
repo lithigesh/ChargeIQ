@@ -20,6 +20,45 @@ class _SignInPageState extends State<SignInPage>
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+  void _showStyledSnackBar({
+    required String message,
+    required Color backgroundColor,
+    required IconData icon,
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          elevation: 8,
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          duration: duration,
+          content: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,24 +82,18 @@ class _SignInPageState extends State<SignInPage>
         _passwordController.text,
       );
 
-      print("Sign in successful: ${cred?.user?.uid}");
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Signed in successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
+      _showStyledSnackBar(
+        message: 'Signed in successfully!',
+        backgroundColor: Colors.green,
+        icon: Icons.check_circle_rounded,
+        duration: const Duration(seconds: 1),
+      );
 
       // Safety check: if AuthWrapper doesn't react within 500ms, force navigation
       if (mounted) {
         // wait for stream propogation
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted && _authService.currentUser != null) {
-          print("AuthWrapper didn't switch, forcing navigation.");
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (_) => MainScreen(key: MainScreen.mainKey),
@@ -69,11 +102,11 @@ class _SignInPageState extends State<SignInPage>
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      _showStyledSnackBar(
+        message: e.toString(),
+        backgroundColor: Colors.red,
+        icon: Icons.error_rounded,
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -85,26 +118,18 @@ class _SignInPageState extends State<SignInPage>
     try {
       final cred = await _authService.signInWithGoogle();
 
-      print("Google Sign in successful: ${cred?.user?.uid}");
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Signed in successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
+      _showStyledSnackBar(
+        message: 'Signed in successfully!',
+        backgroundColor: Colors.green,
+        icon: Icons.check_circle_rounded,
+        duration: const Duration(seconds: 1),
+      );
 
       // Safety check: if AuthWrapper doesn't react within 500ms, force navigation
       if (mounted) {
         // wait for stream propogation
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted && _authService.currentUser != null) {
-          print(
-            "AuthWrapper didn't switch after Google Sign In, forcing navigation.",
-          );
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (_) => MainScreen(key: MainScreen.mainKey),
@@ -113,11 +138,11 @@ class _SignInPageState extends State<SignInPage>
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      _showStyledSnackBar(
+        message: e.toString(),
+        backgroundColor: Colors.red,
+        icon: Icons.error_rounded,
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -298,19 +323,16 @@ class _SignInPageState extends State<SignInPage>
                                                       );
                                                   if (context.mounted) {
                                                     Navigator.pop(context);
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
+                                                    _showStyledSnackBar(
+                                                      message:
                                                           'Password reset email sent! Check your inbox.',
-                                                        ),
-                                                        backgroundColor:
-                                                            Colors.green,
-                                                        duration: Duration(
-                                                          seconds: 4,
-                                                        ),
-                                                      ),
+                                                      backgroundColor:
+                                                          Colors.green,
+                                                      icon: Icons.mark_email_read_rounded,
+                                                      duration:
+                                                          const Duration(
+                                                            seconds: 4,
+                                                          ),
                                                     );
                                                   }
                                                 } catch (e) {
@@ -318,16 +340,12 @@ class _SignInPageState extends State<SignInPage>
                                                     setState(
                                                       () => isLoading = false,
                                                     );
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          e.toString(),
-                                                        ),
-                                                        backgroundColor:
-                                                            Colors.red,
-                                                      ),
+                                                    _showStyledSnackBar(
+                                                      message: e.toString(),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                      icon:
+                                                          Icons.error_rounded,
                                                     );
                                                   }
                                                 }
