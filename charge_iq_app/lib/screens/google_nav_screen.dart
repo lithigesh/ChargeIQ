@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -21,6 +22,12 @@ class GoogleNavScreen extends StatefulWidget {
   final double destinationLng;
   final String destinationName;
   final String? destinationAddress;
+  /// Optional intermediate waypoints (charging stops) from the trip planner.
+  /// Each map must have 'lat' (double), 'lng' (double), and 'name' (String).
+  final List<Map<String, dynamic>> tripWaypoints;
+  /// When true, skips the route-preview phase and starts turn-by-turn
+  /// guidance immediately once the route is calculated.
+  final bool autoStart;
 
   const GoogleNavScreen({
     super.key,
@@ -28,6 +35,8 @@ class GoogleNavScreen extends StatefulWidget {
     required this.destinationLng,
     required this.destinationName,
     this.destinationAddress,
+    this.tripWaypoints = const [],
+    this.autoStart = false,
   });
 
   @override
@@ -50,6 +59,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   String? _errorMessage;
   String _distance = '';
   String _duration = '';
+  bool _isMuted = false;
 
   // ─── Animations ──────────────────────────────────────────────────────────
   late AnimationController _panelController;
@@ -63,6 +73,12 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   @override
   void initState() {
     super.initState();
+
+    // Force light status-bar icons regardless of system theme.
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
+    ));
 
     _panelController = AnimationController(
       vsync: this,
@@ -80,6 +96,8 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   void dispose() {
     _locationSub?.cancel();
     _panelController.dispose();
+    // Restore default system UI overlay so the rest of the app is unaffected.
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
     if (_isSessionInitialized) {
       GoogleMapsNavigator.cleanup();
     }
@@ -89,6 +107,11 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   // ─── Initialization ──────────────────────────────────────────────────────
 
   Future<void> _init() async {
+    // 0. Always tear down any lingering session so we start fresh in light mode.
+    try {
+      await GoogleMapsNavigator.cleanup();
+    } catch (_) {}
+
     // 1. Ensure location permission is granted
     final status = await Permission.location.status;
     if (!status.isGranted) {
@@ -143,6 +166,9 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
     await controller.setNavigationUIEnabled(false);
     await controller.setMyLocationEnabled(true);
 
+    // Always force light mode on the map, regardless of the system theme.
+    await controller.setMapColorScheme(MapColorScheme.light);
+
     // Compute route
     await _setDestinationAndPreviewRoute();
   }
@@ -155,15 +181,32 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
       _isLoading = true;
     });
 
-    final waypoint = NavigationWaypoint.withLatLngTarget(
-      title: widget.destinationName,
-      target: LatLng(latitude: widget.destinationLat, longitude: widget.destinationLng),
+    // Build the ordered list of waypoints: intermediate trip stops first,
+    // then the final destination.
+    final List<NavigationWaypoint> allWaypoints = [];
+    for (final stop in widget.tripWaypoints) {
+      final lat = (stop['lat'] as num).toDouble();
+      final lng = (stop['lng'] as num).toDouble();
+      final name = stop['name']?.toString() ?? 'Stop';
+      allWaypoints.add(
+        NavigationWaypoint.withLatLngTarget(
+          title: name,
+          target: LatLng(latitude: lat, longitude: lng),
+        ),
+      );
+    }
+    // Final destination
+    allWaypoints.add(
+      NavigationWaypoint.withLatLngTarget(
+        title: widget.destinationName,
+        target: LatLng(latitude: widget.destinationLat, longitude: widget.destinationLng),
+      ),
     );
 
     try {
       final status = await GoogleMapsNavigator.setDestinations(
         Destinations(
-          waypoints: [waypoint],
+          waypoints: allWaypoints,
           displayOptions: NavigationDisplayOptions(
             showDestinationMarkers: true,
           ),
@@ -202,7 +245,12 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
             _routeSet = true;
             _isLoading = false;
           });
-          _panelController.forward();
+          if (widget.autoStart) {
+            // Skip preview — jump straight into turn-by-turn guidance.
+            await _startNavigation();
+          } else {
+            _panelController.forward();
+          }
         }
       } else {
         if (mounted) {
@@ -281,6 +329,22 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
     if (mounted) setState(() => _isNavigating = false);
   }
 
+  Future<void> _toggleMute() async {
+    final muted = !_isMuted;
+    try {
+      await GoogleMapsNavigator.setAudioGuidance(
+        NavigationAudioGuidanceSettings(
+          guidanceType: muted
+              ? NavigationAudioGuidanceType.silent
+              : NavigationAudioGuidanceType.alertsAndGuidance,
+        ),
+      );
+    } catch (_) {
+      // Ignore if the SDK version does not support audio guidance control
+    }
+    if (mounted) setState(() => _isMuted = muted);
+  }
+
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   String _formatDistance(int meters) {
@@ -299,9 +363,12 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
+    return Theme(
+      data: ThemeData.light(useMaterial3: true),
+      child: Scaffold(
+      body: SafeArea(
+        child: Stack(
+          children: [
           // ── Google Navigation View ──────────────────────────────────────
           if (_isSessionInitialized)
             GoogleMapsNavigationView(
@@ -346,9 +413,11 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
           ],
 
           // ── Navigating phase UI ─────────────────────────────────────────
-          if (_isNavigating) _buildStopButton(),
+          if (_isNavigating) _buildNavControls(),
         ],
       ),
+    ),
+    ),
     );
   }
 
@@ -447,7 +516,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
 
   Widget _buildTopBar() {
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 8,
+      top: 8,
       left: 12,
       right: 12,
       child: Material(
@@ -495,7 +564,14 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (widget.destinationAddress != null)
+                    if (widget.tripWaypoints.isNotEmpty)
+                      Text(
+                        'Via ${widget.tripWaypoints.length} charging stop${widget.tripWaypoints.length > 1 ? 's' : ''}',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF34A853)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else if (widget.destinationAddress != null)
                       Text(
                         widget.destinationAddress!,
                         style: TextStyle(fontSize: 12, color: Colors.grey[500]),
@@ -561,9 +637,56 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                     _duration.isNotEmpty ? _duration : '—',
                     const Color(0xFFEA4335),
                   ),
-
+                  if (widget.tripWaypoints.isNotEmpty) ...[
+                    const SizedBox(width: 10),
+                    _buildInfoChip(
+                      Icons.ev_station_rounded,
+                      '${widget.tripWaypoints.length} Stop${widget.tripWaypoints.length > 1 ? 's' : ''}',
+                      const Color(0xFF34A853),
+                    ),
+                  ],
                 ],
               ),
+              // Charging stops list
+              if (widget.tripWaypoints.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 28,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: widget.tripWaypoints.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 6),
+                    itemBuilder: (context, i) {
+                      final name = widget.tripWaypoints[i]['name']?.toString() ?? 'Stop ${i + 1}';
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF34A853).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFF34A853).withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.ev_station, size: 12, color: Color(0xFF34A853)),
+                            const SizedBox(width: 4),
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF34A853),
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
 
               // ── Start Navigation Button ───────────────────────────────
@@ -635,12 +758,13 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
     );
   }
 
-  Widget _buildStopButton() {
+  Widget _buildNavControls() {
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 12,
+      top: 12,
       right: 16,
       child: Column(
         children: [
+          // ── Stop / Exit button ──────────────────────────────────────
           Material(
             elevation: 6,
             shape: const CircleBorder(),
@@ -669,6 +793,43 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
           const Text(
             'Exit',
             style: TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              shadows: [Shadow(blurRadius: 4, color: Colors.black54)],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // ── Mute / Unmute button ────────────────────────────────────
+          Material(
+            elevation: 6,
+            shape: const CircleBorder(),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(28),
+              onTap: _toggleMute,
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: _isMuted
+                      ? const Color(0xFF1A1A2E)
+                      : Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _isMuted
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
+                  color: _isMuted ? Colors.white : const Color(0xFF1A1A2E),
+                  size: 26,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _isMuted ? 'Unmute' : 'Mute',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 11,
               fontWeight: FontWeight.w600,

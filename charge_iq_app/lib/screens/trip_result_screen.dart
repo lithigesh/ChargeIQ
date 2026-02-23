@@ -8,6 +8,7 @@ import '../services/trip_service.dart';
 import '../services/directions_service.dart';
 import '../services/vehicle_service.dart';
 import 'main_screen.dart';
+import 'navigation_screen.dart';
 
 class TripResultScreen extends StatefulWidget {
   final String startLocation;
@@ -384,14 +385,16 @@ class _TripResultScreenState extends State<TripResultScreen>
   }
 
   void _openNavigation(List<dynamic> segments) {
-    // Pop back to the main screen and show route on the map
-    Navigator.of(context).popUntil((route) => route.isFirst);
-
-    // Tell the MainScreen to switch to map tab and display the route
-    MainScreen.mainKey.currentState?.showRouteOnMap(
-      startLocation: widget.startLocation,
-      destination: widget.destination,
-      routeSegments: segments,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => NavigationScreen(
+          startLocation: widget.startLocation,
+          destination: widget.destination,
+          routeSegments: segments,
+          destinationName: widget.destination,
+        ),
+      ),
     );
   }
 

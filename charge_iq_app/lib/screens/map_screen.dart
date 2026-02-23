@@ -1714,13 +1714,22 @@ class MapScreenState extends State<MapScreen> {
                   ),
                 ],
                 const SizedBox(height: 14),
-                // Start Navigation — opens Google Navigation
+                // Start Navigation — opens Google Navigation with trip waypoints
                 if (_tripDestLatLng != null)
                   SizedBox(
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
+                        // Convert trip stops to waypoint maps for GoogleNavScreen
+                        final waypoints = _tripStops.map((stop) {
+                          final pos = stop['position'] as LatLng;
+                          return <String, dynamic>{
+                            'lat': pos.latitude,
+                            'lng': pos.longitude,
+                            'name': stop['name']?.toString() ?? 'Charging Stop',
+                          };
+                        }).toList();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -1733,6 +1742,8 @@ class MapScreenState extends State<MapScreen> {
                               destinationAddress: _tripDestination.length > 50
                                   ? _tripDestination
                                   : null,
+                              tripWaypoints: waypoints,
+                              autoStart: true,
                             ),
                           ),
                         );
