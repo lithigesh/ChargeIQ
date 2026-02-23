@@ -6,17 +6,20 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:charge_iq_app/screens/google_nav_screen.dart';
 
 class NavigationScreen extends StatefulWidget {
   final String startLocation;
   final String destination;
   final List<dynamic> routeSegments;
+  final String? destinationName;
 
   const NavigationScreen({
     super.key,
     required this.startLocation,
     required this.destination,
     required this.routeSegments,
+    this.destinationName,
   });
 
   @override
@@ -42,13 +45,17 @@ class _NavigationScreenState extends State<NavigationScreen>
   LatLng? _destinationLatLng;
   List<LatLng> _waypoints = [];
 
+  String get _displayDestinationName {
+    final customName = widget.destinationName;
+    if (customName != null && customName.trim().isNotEmpty) {
+      return customName.trim();
+    }
+    return widget.destination;
+  }
+
   // Animation controllers
   late AnimationController _bottomSheetController;
   late Animation<double> _bottomSheetAnimation;
-  late AnimationController _startButtonController;
-  late Animation<double> _startButtonScale;
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
   late AnimationController _fabController;
   late Animation<double> _fabSlide;
 
@@ -67,22 +74,6 @@ class _NavigationScreenState extends State<NavigationScreen>
       curve: Curves.easeOutCubic,
     );
 
-    _startButtonController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _startButtonScale = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _startButtonController, curve: Curves.elasticOut),
-    );
-
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
     _fabController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -97,8 +88,6 @@ class _NavigationScreenState extends State<NavigationScreen>
   @override
   void dispose() {
     _bottomSheetController.dispose();
-    _startButtonController.dispose();
-    _pulseController.dispose();
     _fabController.dispose();
     _locationSubscription?.cancel();
     _mapController?.dispose();
@@ -332,9 +321,6 @@ class _NavigationScreenState extends State<NavigationScreen>
             Future.delayed(const Duration(milliseconds: 300), () {
               if (mounted) _bottomSheetController.forward();
             });
-            Future.delayed(const Duration(milliseconds: 600), () {
-              if (mounted) _startButtonController.forward();
-            });
             Future.delayed(const Duration(milliseconds: 400), () {
               if (mounted) _fabController.forward();
             });
@@ -479,31 +465,6 @@ class _NavigationScreenState extends State<NavigationScreen>
     }
   }
 
-  void _startNavigation() {
-    setState(() {
-      _isNavigating = true;
-      _currentStepIndex = 0;
-    });
-
-    // Zoom into the first step
-    if (_steps.isNotEmpty) {
-      final firstStep = _steps[0];
-      _mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: firstStep['start_location'],
-            zoom: 17,
-            tilt: 45,
-            bearing: 0,
-          ),
-        ),
-      );
-    }
-
-    // Start live location tracking
-    _startLocationTracking();
-  }
-
   void _stopNavigation() {
     setState(() {
       _isNavigating = false;
@@ -515,46 +476,6 @@ class _NavigationScreenState extends State<NavigationScreen>
     if (_polylines.isNotEmpty) {
       _fitBounds(_polylines.first.points);
     }
-  }
-
-  void _startLocationTracking() {
-    _locationSubscription =
-        Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.bestForNavigation,
-            distanceFilter: 10,
-          ),
-        ).listen((Position position) {
-          if (!mounted) return;
-
-          final newPos = LatLng(position.latitude, position.longitude);
-          setState(() {
-            // Update current location marker
-            _markers.removeWhere((m) => m.markerId.value == 'current_nav');
-            _markers.add(
-              Marker(
-                markerId: const MarkerId('current_nav'),
-                position: newPos,
-                icon: BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueAzure,
-                ),
-                infoWindow: const InfoWindow(title: 'You'),
-                anchor: const Offset(0.5, 0.5),
-              ),
-            );
-          });
-
-          _mapController?.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(
-                target: newPos,
-                zoom: 17,
-                tilt: 45,
-                bearing: position.heading,
-              ),
-            ),
-          );
-        });
   }
 
   void _goToNextStep() {
@@ -809,8 +730,8 @@ class _NavigationScreenState extends State<NavigationScreen>
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                  horizontal: 18,
+                  vertical: 14,
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -820,45 +741,62 @@ class _NavigationScreenState extends State<NavigationScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.destination,
+                      _displayDestinationName,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: 16,
                         color: Color(0xFF1A1A2E),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          _totalDistance,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (_totalDistance.isNotEmpty &&
-                            _totalDuration.isNotEmpty)
-                          Text(
-                            '  •  ',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 13,
+                    const SizedBox(height: 6),
+                    if (_totalDistance.isNotEmpty || _totalDuration.isNotEmpty)
+                      Row(
+                        children: [
+                          if (_totalDistance.isNotEmpty) ...[
+                            const Icon(
+                              Icons.route_rounded,
+                              size: 16,
+                              color: Color(0xFF4285F4),
                             ),
-                          ),
-                        Text(
-                          _totalDuration,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF4285F4),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _totalDistance,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                          if (_totalDistance.isNotEmpty &&
+                              _totalDuration.isNotEmpty)
+                            Text(
+                              '  •  ',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 13,
+                              ),
+                            ),
+                          if (_totalDuration.isNotEmpty) ...[
+                            const Icon(
+                              Icons.access_time_filled_rounded,
+                              size: 16,
+                              color: Color(0xFFEA4335),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _totalDuration,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF4285F4),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -1121,51 +1059,49 @@ class _NavigationScreenState extends State<NavigationScreen>
                     ),
                   ),
 
-                // Start button
+                // Start button (static, not floating)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                  child: ScaleTransition(
-                    scale: _startButtonScale,
-                    child: AnimatedBuilder(
-                      animation: _pulseAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _pulseAnimation.value,
-                          child: child,
-                        );
-                      },
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: _startNavigation,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4285F4),
-                            foregroundColor: Colors.white,
-                            elevation: 4,
-                            shadowColor: const Color(
-                              0xFF4285F4,
-                            ).withOpacity(0.4),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (_destinationLatLng == null) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => GoogleNavScreen(
+                              destinationLat: _destinationLatLng!.latitude,
+                              destinationLng: _destinationLatLng!.longitude,
+                              destinationName: _displayDestinationName,
+                              destinationAddress: widget.destination,
                             ),
                           ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.navigation_rounded, size: 24),
-                              SizedBox(width: 10),
-                              Text(
-                                'Start Navigation',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4285F4),
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        shadowColor: const Color(0xFF4285F4).withOpacity(0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.navigation_rounded, size: 24),
+                          SizedBox(width: 10),
+                          Text(
+                            'Start Navigation',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
