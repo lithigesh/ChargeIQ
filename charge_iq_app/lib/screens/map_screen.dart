@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' show cos, sqrt, asin;
 import 'package:charge_iq_app/screens/google_nav_screen.dart';
+import 'package:charge_iq_app/services/gemini_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -25,11 +26,13 @@ class MapScreenState extends State<MapScreen> {
   final TextEditingController searchController = TextEditingController();
   bool isLoadingStations = false;
   bool isLoadingDirections = false;
+  bool isAISelectingStation = false;
   LatLng? currentLocation;
   String? currentAddressShort;
   BitmapDescriptor? customEVIcon;
   BitmapDescriptor? customLocationIcon;
   Map<String, dynamic>? selectedStation;
+  final GeminiService _geminiService = GeminiService();
 
   // Trip route state
   bool _showingTripRoute = false;
@@ -38,6 +41,11 @@ class MapScreenState extends State<MapScreen> {
   String _tripDestination = '';
   LatLng? _tripDestLatLng;
   List<Map<String, dynamic>> _tripStops = [];
+
+  // Search state
+  List<Map<String, dynamic>> _allLoadedStations = [];
+  List<Map<String, dynamic>> _searchResults = [];
+  bool _showSearchResults = false;
 
   // Cache settings
   static const String CACHE_KEY = 'ev_stations_cache';
@@ -49,6 +57,7 @@ class MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     apiKey = dotenv.env['GOOGLE_MAPS_API_KEY']!;
+    searchController.addListener(_onSearchChanged);
     _initializeApp();
   }
 
@@ -394,6 +403,7 @@ class MapScreenState extends State<MapScreen> {
             debugPrint('✅ Loaded ${nearby.length} nearby stations from cache');
             _displayStations(nearby);
             setState(() {
+              _allLoadedStations = nearby;
               isLoadingStations = false;
             });
             return;
@@ -458,6 +468,10 @@ class MapScreenState extends State<MapScreen> {
         await _saveStationsToCache(stationData);
 
         _displayStations(stationData);
+
+        setState(() {
+          _allLoadedStations = stationData;
+        });
 
         debugPrint(
           '✅ Found ${stationData.length} stations within ${SEARCH_RADIUS_KM}km',
@@ -640,24 +654,45 @@ class MapScreenState extends State<MapScreen> {
       // Display all nearby stations on map
       _displayStations(nearbyStations);
 
-      // Step 4: Get the BEST station
-      final bestStation = nearbyStations.first;
+      // Step 4: Use AI to select the BEST station
+      setState(() {
+        isAISelectingStation = true;
+      });
+
+      debugPrint('🤖 Asking AI to select optimal station...');
+
+      final aiSelectedStation = await _geminiService.selectOptimalStation(
+        nearbyStations: nearbyStations,
+        currentLatitude: currentLocation!.latitude,
+        currentLongitude: currentLocation!.longitude,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        isAISelectingStation = false;
+      });
+
+      // Step 5: Use AI-selected station or fallback to top-scored station
+      final bestStation = aiSelectedStation ?? nearbyStations.first;
 
       // Safe formatting for debug
       final debugPrice = bestStation['price'] != null
           ? '\$${(bestStation['price']).toStringAsFixed(2)}'
           : 'N/A';
       final debugPorts = bestStation['available_ports']?.toString() ?? 'N/A';
+      final aiInfo = bestStation['selected_via_ai'] == true
+          ? ' [AI Selected - ${(bestStation['ai_confidence'] * 100).toStringAsFixed(0)}% confidence]'
+          : ' [Rule-based Score]';
 
       debugPrint(
         '⚡ Best station: ${bestStation['name']} '
-        '(Score: ${bestStation['score'].toStringAsFixed(1)}, '
-        'Dist: ${bestStation['distance'].toStringAsFixed(1)}km, '
+        '(Dist: ${bestStation['distance'].toStringAsFixed(1)}km, '
         'Ports: $debugPorts, '
-        'Price: $debugPrice)',
+        'Price: $debugPrice)$aiInfo',
       );
 
-      // Step 5: Show the best station details card
+      // Step 6: Show the best station details card
       _showStationDetails(bestStation);
 
       // Center map on best station
@@ -847,6 +882,74 @@ class MapScreenState extends State<MapScreen> {
 
                 const SizedBox(height: 12),
 
+                // AI Selection Badge
+                if (station['selected_via_ai'] == true)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4285F4).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF4285F4).withOpacity(0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              '🤖 AI Recommended',
+                              style: TextStyle(
+                                color: Color(0xFF4285F4),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${((station['ai_confidence'] ?? 0.0) * 100).toStringAsFixed(0)}% confident',
+                                style: const TextStyle(
+                                  color: Color(0xFF10B981),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          station['ai_reason'] ??
+                              'Optimal choice based on analysis',
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                const SizedBox(height: 12),
+
                 // Price and Availability (Best Match Details)
                 if (station['available_ports'] != null ||
                     station['price'] != null)
@@ -985,8 +1088,7 @@ class MapScreenState extends State<MapScreen> {
                             destinationLng: station['lng'] as double,
                             destinationName:
                                 station['name']?.toString() ?? 'EV Charger',
-                            destinationAddress:
-                                station['vicinity']?.toString(),
+                            destinationAddress: station['vicinity']?.toString(),
                           ),
                         ),
                       );
@@ -1079,9 +1181,6 @@ class MapScreenState extends State<MapScreen> {
           final distance = legs['distance']['text'];
 
           _showSnackBar('$distance • $duration');
-
-          // Show turn-by-turn instructions
-          _showTurnByTurnDirections(legs['steps']);
         }
       }
     } catch (e) {
@@ -1144,162 +1243,6 @@ class MapScreenState extends State<MapScreen> {
     );
 
     mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
-  }
-
-  // Show turn-by-turn directions panel
-  void _showTurnByTurnDirections(List<dynamic> steps) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.3,
-        maxChildSize: 0.9,
-        builder: (context, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          child: Column(
-            children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3B82F6).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.directions,
-                        color: Color(0xFF3B82F6),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Turn-by-Turn Directions',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Directions list
-              Expanded(
-                child: ListView.separated(
-                  controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: steps.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final step = steps[index];
-                    final instruction = _stripHtml(step['html_instructions']);
-                    final distance = step['distance']['text'];
-                    final maneuver = step['maneuver'] ?? '';
-
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                      leading: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3B82F6).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: const TextStyle(
-                              color: Color(0xFF3B82F6),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        instruction,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          height: 1.4,
-                        ),
-                      ),
-                      subtitle: Text(
-                        distance,
-                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                      ),
-                      trailing: Icon(
-                        _getManeuverIcon(maneuver),
-                        color: const Color(0xFF3B82F6),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Strip HTML tags from instructions
-  String _stripHtml(String html) {
-    return html.replaceAll(RegExp(r'<[^>]*>'), '');
-  }
-
-  // Get icon for maneuver type
-  IconData _getManeuverIcon(String maneuver) {
-    switch (maneuver) {
-      case 'turn-left':
-        return Icons.turn_left;
-      case 'turn-right':
-        return Icons.turn_right;
-      case 'turn-slight-left':
-        return Icons.turn_slight_left;
-      case 'turn-slight-right':
-        return Icons.turn_slight_right;
-      case 'turn-sharp-left':
-        return Icons.turn_sharp_left;
-      case 'turn-sharp-right':
-        return Icons.turn_sharp_right;
-      case 'roundabout-left':
-      case 'roundabout-right':
-        return Icons.roundabout_left;
-      case 'merge':
-        return Icons.merge;
-      case 'fork-left':
-      case 'fork-right':
-        return Icons.fork_left;
-      case 'straight':
-        return Icons.straight;
-      default:
-        return Icons.navigation;
-    }
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -1730,10 +1673,7 @@ class MapScreenState extends State<MapScreen> {
                   icon: const Icon(Icons.navigation_rounded, size: 18),
                   label: const Text(
                     'Navigate',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4285F4),
@@ -1795,6 +1735,46 @@ class MapScreenState extends State<MapScreen> {
     );
   }
 
+  // Search functionality
+  void _onSearchChanged() {
+    final query = searchController.text.toLowerCase();
+    if (query.isEmpty) {
+      setState(() {
+        _showSearchResults = false;
+        _searchResults = [];
+      });
+      return;
+    }
+
+    final results = _filterStations(query);
+    setState(() {
+      _searchResults = results;
+      _showSearchResults = results.isNotEmpty;
+    });
+  }
+
+  List<Map<String, dynamic>> _filterStations(String query) {
+    return _allLoadedStations.where((station) {
+      final name = station['name'].toString().toLowerCase();
+      final vicinity = station['vicinity'].toString().toLowerCase();
+      return name.contains(query) || vicinity.contains(query);
+    }).toList();
+  }
+
+  Future<void> _selectStationFromSearch(Map<String, dynamic> station) async {
+    // Close search results
+    setState(() {
+      _showSearchResults = false;
+      searchController.clear();
+    });
+
+    // Show station details
+    _showStationDetails(station);
+
+    // Get directions to the station
+    await _getDirections(station);
+  }
+
   @override
   Widget build(BuildContext context) {
     final evStationCount = markers
@@ -1830,6 +1810,278 @@ class MapScreenState extends State<MapScreen> {
               }
             },
           ),
+
+          // Search Bar - Fixed at top
+          if (!_showSearchResults)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              left: 16,
+              right: 16,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search charging stations...',
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                    prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                    suffixIcon: searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.close, color: Colors.grey[600]),
+                            onPressed: () {
+                              searchController.clear();
+                              setState(() {
+                                _showSearchResults = false;
+                              });
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Full Screen Search Results Overlay
+          if (_showSearchResults)
+            Positioned.fill(
+              child: Container(
+                color: Colors.white,
+                child: Column(
+                  children: [
+                    // Search Input in Full Screen
+                    Container(
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).padding.top + 16,
+                        left: 16,
+                        right: 16,
+                        bottom: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: TextField(
+                                controller: searchController,
+                                autofocus: true,
+                                decoration: InputDecoration(
+                                  hintText: 'Search charging stations...',
+                                  hintStyle: TextStyle(color: Colors.grey[500]),
+                                  prefixIcon: Icon(
+                                    Icons.search,
+                                    color: Colors.grey[600],
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          InkWell(
+                            onTap: () {
+                              searchController.clear();
+                              setState(() {
+                                _showSearchResults = false;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close, size: 20),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Search Results List
+                    Expanded(
+                      child: _searchResults.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.search,
+                                    size: 80,
+                                    color: Colors.grey[300],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No stations found',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Try searching with a different name or location',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[500],
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: _searchResults.length,
+                              itemBuilder: (context, index) {
+                                final station = _searchResults[index];
+                                final distance =
+                                    station['distance']?.toStringAsFixed(1) ??
+                                    'N/A';
+                                final rating =
+                                    station['rating']?.toStringAsFixed(1) ??
+                                    'N/A';
+
+                                return InkWell(
+                                  onTap: () =>
+                                      _selectStationFromSearch(station),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Colors.grey[200]!,
+                                          width: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: const Color(
+                                              0xFF10B981,
+                                            ).withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.ev_station,
+                                            color: Color(0xFF10B981),
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                station['name'] ?? 'Station',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 16,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                station['vicinity'] ?? '',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.grey[600],
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            if (station['rating'] != 0)
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons.star,
+                                                    size: 16,
+                                                    color: Colors.amber[700],
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    rating,
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${distance}km',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF4285F4),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // Trip route loading overlay
           if (isLoadingDirections && _showingTripRoute)
@@ -1919,48 +2171,11 @@ class MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          if (evStationCount > 0)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 16,
-              left: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.ev_station, color: Color(0xFF4285F4), size: 18),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$evStationCount within ${SEARCH_RADIUS_KM.toInt()}km',
-                      style: const TextStyle(
-                        color: Color(0xFF1A1A2E),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
           // Trip route info panel
           if (_showingTripRoute) _buildTripRoutePanel(),
 
-          if (isLoadingStations)
+          // Unified Loading Card - Show while finding stations or AI is selecting
+          if (isLoadingStations || isAISelectingStation)
             Positioned(
               bottom: 140,
               left: 0,
@@ -1969,14 +2184,14 @@ class MapScreenState extends State<MapScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
-                    vertical: 16,
+                    vertical: 14,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: const Color(0xFF4285F4).withOpacity(0.15),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -1984,10 +2199,10 @@ class MapScreenState extends State<MapScreen> {
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
+                    children: [
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
                           valueColor: AlwaysStoppedAnimation<Color>(
@@ -1995,14 +2210,33 @@ class MapScreenState extends State<MapScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(width: 16),
-                      Text(
-                        'Finding nearby stations...',
-                        style: TextStyle(
-                          color: Color(0xFF1A1A2E),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      const SizedBox(width: 14),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isAISelectingStation
+                                ? '🤖 Selecting Best Station '
+                                : '⚡ Finding Nearby Stations',
+                            style: const TextStyle(
+                              color: Color(0xFF1A1A2E),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isAISelectingStation
+                                ? 'Analyzing with Gemini AI'
+                                : 'Using Google Maps API',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

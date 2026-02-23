@@ -143,7 +143,7 @@ class _MainScreenState extends State<MainScreen> {
                     }
                   }
                 },
-                backgroundColor: const Color(0xFF00D26A),
+                backgroundColor: const Color.fromARGB(255, 51, 155, 33),
                 elevation: 4,
                 shape: const CircleBorder(),
                 child: const Icon(Icons.bolt, size: 32, color: Colors.white),
