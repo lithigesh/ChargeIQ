@@ -1594,161 +1594,239 @@ class MapScreenState extends State<MapScreen> {
     loadNearbyStations();
   }
 
-  Widget _buildTripRoutePanel() {
+  /// Top bar when trip route is showing: white card with back button, destination name, address.
+  Widget _buildTripRouteTopBar() {
     return Positioned(
-      bottom: 40,
-      left: 16,
-      right: 80,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header row
-            Row(
-              children: [
-                Container(
+      top: MediaQuery.of(context).padding.top + 8,
+      left: 12,
+      right: 12,
+      child: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(16),
+        shadowColor: Colors.black26,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: _clearTripRoute,
+                child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4285F4).withOpacity(0.1),
+                    color: Colors.grey[100],
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
-                    Icons.navigation_rounded,
-                    color: Color(0xFF4285F4),
-                    size: 20,
+                    Icons.arrow_back_ios_new,
+                    size: 18,
+                    color: Color(0xFF1A1A2E),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _tripDestination,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _tripDestination.isNotEmpty
+                          ? _tripDestination
+                          : 'Destination',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF1A1A2E),
                       ),
-                      const SizedBox(height: 2),
-                      Row(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (_tripDestination.contains(',') ||
+                        _tripDestination.contains('+'))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          _tripDestination.length > 40
+                              ? '${_tripDestination.substring(0, 40)}...'
+                              : _tripDestination,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Bottom panel: handle, distance/duration chips, Start Navigation button (matches reference design).
+  Widget _buildTripRoutePanel() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 24,
+              offset: const Offset(0, -6),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Distance and duration chips (same layout as reference)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildTripRouteInfoChip(
+                        Icons.route_rounded,
+                        _tripDistance.isNotEmpty ? _tripDistance : '—',
+                        const Color(0xFF4285F4),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildTripRouteInfoChip(
+                        Icons.access_time_filled_rounded,
+                        _tripDuration.isNotEmpty ? _tripDuration : '—',
+                        const Color(0xFFEA4335),
+                      ),
+                    ),
+                  ],
+                ),
+                // Stops chips (when present)
+                if (_tripStops.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 32,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _tripStops.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 6),
+                      itemBuilder: (context, index) {
+                        return _buildTripStopChip(_tripStops[index], index);
+                      },
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                // Start Navigation — opens Google Navigation
+                if (_tripDestLatLng != null)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => GoogleNavScreen(
+                              destinationLat: _tripDestLatLng!.latitude,
+                              destinationLng: _tripDestLatLng!.longitude,
+                              destinationName: _tripDestination.isNotEmpty
+                                  ? _tripDestination
+                                  : 'Destination',
+                              destinationAddress: _tripDestination.length > 50
+                                  ? _tripDestination
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4285F4),
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        shadowColor: const Color(0xFF4285F4).withOpacity(0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          Icon(Icons.navigation_rounded, size: 22),
+                          SizedBox(width: 10),
                           Text(
-                            _tripDistance,
+                            'Start Navigation',
                             style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            '  •  ',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 13,
-                            ),
-                          ),
-                          Text(
-                            _tripDuration,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF4285F4),
-                              fontWeight: FontWeight.w600,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                // Close button
-                InkWell(
-                  onTap: _clearTripRoute,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.close, size: 18, color: Colors.red[400]),
                   ),
-                ),
               ],
             ),
-            // Stops chips
-            if (_tripStops.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 32,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _tripStops.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 6),
-                  itemBuilder: (context, index) {
-                    final stop = _tripStops[index];
-                    return _buildTripStopChip(stop, index);
-                  },
-                ),
-              ),
-            ],
-            // ── Navigate via Google Navigation SDK ──────────────────────
-            if (_tripDestLatLng != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => GoogleNavScreen(
-                          destinationLat: _tripDestLatLng!.latitude,
-                          destinationLng: _tripDestLatLng!.longitude,
-                          destinationName: _tripDestination.isNotEmpty
-                              ? _tripDestination
-                              : 'Destination',
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.navigation_rounded, size: 18),
-                  label: const Text(
-                    'Navigate',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4285F4),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTripRouteInfoChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.09),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -1843,9 +1921,9 @@ class MapScreenState extends State<MapScreen> {
               ),
             ),
 
-          // Current Location Button
+          // Current Location Button (above trip panel when route is showing)
           Positioned(
-            bottom: 40,
+            bottom: _showingTripRoute ? 220 : 40,
             right: 16,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1957,8 +2035,11 @@ class MapScreenState extends State<MapScreen> {
               ),
             ),
 
-          // Trip route info panel
-          if (_showingTripRoute) _buildTripRoutePanel(),
+          // Trip route top bar (destination card) and bottom panel
+          if (_showingTripRoute) ...[
+            _buildTripRouteTopBar(),
+            _buildTripRoutePanel(),
+          ],
 
           if (isLoadingStations)
             Positioned(
