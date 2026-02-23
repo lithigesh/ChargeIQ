@@ -26,6 +26,7 @@ class GeminiService {
     required String startTime,
     String? vehicleType,
     String? evRange,
+    bool includeRestaurants = false,
   }) async {
     try {
       // Build vehicle context
@@ -96,6 +97,8 @@ $vehicleContext
       4. Only charge up to $maxCharge% at each stop for battery longevity.
       
       MEAL PLANNING RULES (based on start time $startTime):
+      ${includeRestaurants ? '''
+      - The user HAS opted in to restaurant/cafe suggestions. Follow these rules:
       - Calculate the estimated arrival time at each charging stop.
       - ONLY suggest meal stops that align with the appropriate meal time:
         * Breakfast: 7:00 AM - 10:00 AM → suggest a restaurant
@@ -104,6 +107,11 @@ $vehicleContext
         * Dinner: 7:00 PM - 10:00 PM → suggest a restaurant
       - If a charging stop does NOT fall during a meal time, mark restaurant_name as null and meal_type as "none".
       - If it DOES fall during a meal time, suggest a highly-rated restaurant/cafe/bakery nearby with the correct meal_type.
+      ''' : '''
+      - The user has NOT opted in to restaurant/cafe suggestions.
+      - For ALL charging stops, always set restaurant_name to null, meal_type to "none", restaurant_rating to null, and cuisine_type to null.
+      - Do NOT suggest any restaurants, cafes, or eateries under any circumstances.
+      '''}
       
       Provide the response in structured JSON format:
       {
@@ -158,14 +166,12 @@ $vehicleContext
   }) async {
     try {
       if (nearbyStations.isEmpty) {
-        debugPrint('❌ No stations to analyze');
+        debugPrint('[GEMINI API] No stations to analyze');
         return null;
       }
 
-      debugPrint(
-        '📡 [GEMINI API] Starting API call to select optimal station...',
-      );
-      debugPrint('📊 [GEMINI API] Analyzing ${nearbyStations.length} stations');
+      debugPrint('[GEMINI API] Starting API call to select optimal station...');
+      debugPrint('[GEMINI API] Analyzing ${nearbyStations.length} stations');
 
       // Format stations data for AI analysis
       final stationsData = nearbyStations
@@ -225,21 +231,19 @@ $stationsData
       ''';
 
       final content = [Content.text(prompt)];
-      debugPrint(
-        '📡 [GEMINI API] 🚀 Sending request to Gemini API (model: gemini-2.5-flash)...',
-      );
+      debugPrint('[GEMINI API] Sending request to Gemini API (model: gemini-2.5-flash)...');
 
       final response = await _model.generateContent(content);
 
-      debugPrint('✅ [GEMINI API] 🎉 API Response received successfully!');
+      debugPrint('[GEMINI API] Response received successfully.');
 
       if (response.text == null) {
-        debugPrint('❌ [GEMINI API] Response was null');
+        debugPrint('[GEMINI API] Response was null');
         return null;
       }
 
       debugPrint(
-        '📄 [GEMINI API] Response preview: ${response.text!.substring(0, 100)}...',
+        '[GEMINI API] Response preview: ${response.text!.substring(0, 100)}...',
       );
 
       // Parse the AI response
@@ -254,14 +258,12 @@ $stationsData
         jsonStr = responseText.substring(jsonStart, jsonEnd + 1);
       }
 
-      debugPrint('🔍 [GEMINI API] Parsing JSON response...');
+      debugPrint('[GEMINI API] Parsing JSON response...');
 
       final jsonResponse = jsonDecode(jsonStr) as Map<String, dynamic>;
       final selectedIndex = (jsonResponse['selected_index'] as num).toInt();
 
-      debugPrint(
-        '✔️ [GEMINI API] JSON parsed successfully. Selected index: $selectedIndex',
-      );
+      debugPrint('[GEMINI API] JSON parsed. Selected index: $selectedIndex');
 
       if (selectedIndex >= 0 && selectedIndex < nearbyStations.length) {
         // Add AI selection metadata to the selected station
@@ -274,20 +276,18 @@ $stationsData
         selectedStation['selected_via_ai'] = true;
 
         debugPrint(
-          '🎯 [GEMINI API] ✅ AI SUCCESSFULLY SELECTED: ${selectedStation['name']} '
+          '[GEMINI API] Selected: ${selectedStation['name']} '
           '| Confidence: ${(jsonResponse['confidence'] * 100).toStringAsFixed(0)}%',
         );
 
         return selectedStation;
       }
 
-      debugPrint('❌ [GEMINI API] Selected index out of range: $selectedIndex');
+      debugPrint('[GEMINI API] Selected index out of range: $selectedIndex');
       return null;
     } catch (e, stackTrace) {
-      debugPrint('❌ [GEMINI API] 🔴 ERROR OCCURRED: $e');
-      debugPrint(
-        '📍 [GEMINI API] Stack: ${stackTrace.toString().split('\n').first}',
-      );
+      debugPrint('[GEMINI API] Error: $e');
+      debugPrint('[GEMINI API] Stack: ${stackTrace.toString().split("\n").first}');
       return null;
     }
   }

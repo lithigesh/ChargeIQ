@@ -40,6 +40,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   TimeOfDay _startTime = TimeOfDay.now();
   bool _useCurrentTime = true;
 
+  // Preferences
+  bool _includeRestaurants = false;
+  bool _isPlanning = false;
+
   @override
   void initState() {
     super.initState();
@@ -115,25 +119,75 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     return null;
   }
 
+  void _showTripSnackBar(
+    String message, {
+    Color bgColor = const Color(0xFF323232),
+    IconData icon = Icons.info_outline,
+    Color iconColor = Colors.white,
+    Duration duration = const Duration(seconds: 3),
+  }) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        backgroundColor: bgColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        duration: duration,
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: iconColor, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _planTrip() async {
+    if (_isPlanning) return;
     if (_selectedVehicles.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one vehicle')),
+      _showTripSnackBar(
+        'Please select at least one vehicle',
+        bgColor: const Color(0xFFE53935),
+        icon: Icons.directions_car_outlined,
       );
       return;
     }
 
     if (_destinationLocationName == null || _destinationLocationName!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a destination')),
+      _showTripSnackBar(
+        'Please select a destination',
+        bgColor: const Color(0xFFE53935),
+        icon: Icons.location_off_outlined,
       );
       return;
     }
 
     if (!_useCurrentLocation &&
         (_startLocationName == null || _startLocationName!.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a starting point')),
+      _showTripSnackBar(
+        'Please select a starting point',
+        bgColor: const Color(0xFFE53935),
+        icon: Icons.my_location,
       );
       return;
     }
@@ -148,13 +202,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
 
     if (_destinationLocationName != null &&
         !isIndiaLocation(_destinationLocationName!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Service is currently available only within India 🇮🇳',
-          ),
-          backgroundColor: Colors.orange,
-        ),
+      _showTripSnackBar(
+        'Service is currently available only within India',
+        bgColor: const Color(0xFFF57C00),
+        icon: Icons.public_off_outlined,
       );
       return;
     }
@@ -162,11 +213,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     if (!_useCurrentLocation &&
         _startLocationName != null &&
         !isIndiaLocation(_startLocationName!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Starting point must be within India 🇮🇳'),
-          backgroundColor: Colors.orange,
-        ),
+      _showTripSnackBar(
+        'Starting point must be within India',
+        bgColor: const Color(0xFFF57C00),
+        icon: Icons.public_off_outlined,
       );
       return;
     }
@@ -175,6 +225,8 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     String finalStartLocation = _startLocationName ?? 'Current Location';
     double? finalStartLat = _startLat;
     double? finalStartLng = _startLng;
+
+    setState(() => _isPlanning = true);
 
     if (_useCurrentLocation) {
       final resolved = await _resolveCurrentLocation();
@@ -200,6 +252,8 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
 
     if (!mounted) return;
 
+    setState(() => _isPlanning = false);
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -216,6 +270,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
           startLng: finalStartLng,
           destLat: _destLat,
           destLng: _destLng,
+          includeRestaurants: _includeRestaurants,
         ),
       ),
     );
@@ -627,10 +682,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     if (_allVehicles.isEmpty) {
       return GestureDetector(
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Add vehicles from your Profile → My Vehicles'),
-            ),
+          _showTripSnackBar(
+            'Add vehicles from Profile → My Vehicles',
+            bgColor: const Color(0xFF1565C0),
+            icon: Icons.directions_car_outlined,
           );
         },
         child: Container(
@@ -1060,6 +1115,66 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
 
           const SizedBox(height: 20),
 
+          // Restaurants & Cafes toggle
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FE),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEEFF4),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.restaurant_rounded,
+                    color: Colors.grey,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Restaurants & Cafes',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Include meal stops along the route',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                  value: _includeRestaurants,
+                  onChanged: (val) => setState(() => _includeRestaurants = val),
+                  activeColor: const Color(0xFF00D26A),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
           // Start Time
           const Text(
             'Start Time',
@@ -1183,20 +1298,41 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: _planTrip,
+        onPressed: _isPlanning ? null : _planTrip,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF00D26A),
           foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFF00D26A).withValues(alpha: 0.7),
+          disabledForegroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 5,
           shadowColor: const Color(0xFF00D26A).withValues(alpha: 0.4),
         ),
-        child: const Text(
-          'Plan Optimal Route',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        child: _isPlanning
+            ? const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Planning Route...',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              )
+            : const Text(
+                'Plan Optimal Route',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
       ),
     );
   }
@@ -1271,9 +1407,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               },
               onDismissed: (direction) {
                 _tripService.deleteTrip(trip.id);
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('Trip deleted')));
+                _showTripSnackBar(
+                  'Trip plan deleted',
+                  bgColor: const Color(0xFFB71C1C),
+                  icon: Icons.delete_outline,
+                  duration: const Duration(seconds: 4),
+                );
               },
               child: Card(
                 elevation: 0,

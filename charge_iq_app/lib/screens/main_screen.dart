@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:charge_iq_app/screens/map_screen.dart';
 import 'package:charge_iq_app/screens/stations_list_screen.dart';
 import 'package:charge_iq_app/screens/trip_planning_screen.dart';
@@ -17,6 +18,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  bool _fabLoading = false;
 
   final GlobalKey<MapScreenState> _mapKey = GlobalKey<MapScreenState>();
 
@@ -37,6 +39,129 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  void _showQuickChargeSettings() {
+    final mapState = _mapKey.currentState;
+    if (mapState == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheet) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Quick Charge Settings',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Long-press the charge button to access these settings.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Use AI for Station Selection',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              mapState.useAIForQuickCharge
+                                  ? 'Gemini AI picks the optimal station'
+                                  : 'Scoring algorithm ranks stations locally',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: mapState.useAIForQuickCharge,
+                        onChanged: (val) async {
+                          setSheet(() {});
+                          setState(() {
+                            mapState.useAIForQuickCharge = val;
+                          });
+                          final prefs =
+                              await SharedPreferences.getInstance();
+                          await prefs.setBool('quick_charge_use_ai', val);
+                        },
+                        activeColor: const Color(0xFF00D26A),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          mapState.useAIForQuickCharge
+                              ? Icons.psychology_outlined
+                              : Icons.calculate_outlined,
+                          size: 18,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            mapState.useAIForQuickCharge
+                                ? 'AI mode: Gemini analyses each station and selects the best one. Slightly slower but more accurate.'
+                                : 'Score mode: Stations are ranked instantly using a weighted score of open status, rating, distance and ports.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   /// Switch to map tab and display the given trip route
@@ -130,23 +255,41 @@ class _MainScreenState extends State<MainScreen> {
           : SizedBox(
               width: 65,
               height: 65,
-              child: FloatingActionButton(
-                onPressed: () async {
-                  // Quick Charge: Find and navigate to nearest EV charging station
-                  if (_selectedIndex == 0) {
-                    _mapKey.currentState?.quickCharge();
-                  } else {
-                    _onItemTapped(0);
-                    await Future.delayed(const Duration(milliseconds: 500));
-                    if (mounted) {
-                      _mapKey.currentState?.quickCharge();
-                    }
-                  }
-                },
-                backgroundColor: const Color.fromARGB(255, 51, 155, 33),
-                elevation: 4,
-                shape: const CircleBorder(),
-                child: const Icon(Icons.bolt, size: 32, color: Colors.white),
+              child: GestureDetector(
+                onLongPress: () => _showQuickChargeSettings(),
+                child: FloatingActionButton(
+                  onPressed: _fabLoading
+                      ? null
+                      : () async {
+                          setState(() => _fabLoading = true);
+                          try {
+                            if (_selectedIndex != 0) {
+                              _onItemTapped(0);
+                              await Future.delayed(
+                                const Duration(milliseconds: 400),
+                              );
+                            }
+                            if (mounted) {
+                              await _mapKey.currentState?.quickCharge();
+                            }
+                          } finally {
+                            if (mounted) setState(() => _fabLoading = false);
+                          }
+                        },
+                  backgroundColor: const Color.fromARGB(255, 51, 155, 33),
+                  elevation: 4,
+                  shape: const CircleBorder(),
+                  child: _fabLoading
+                      ? const SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.bolt, size: 32, color: Colors.white),
+                ),
               ),
             ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,

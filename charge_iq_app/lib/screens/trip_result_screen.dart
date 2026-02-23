@@ -24,6 +24,7 @@ class TripResultScreen extends StatefulWidget {
   final double? startLng;
   final double? destLat;
   final double? destLng;
+  final bool includeRestaurants;
 
   const TripResultScreen({
     super.key,
@@ -41,6 +42,7 @@ class TripResultScreen extends StatefulWidget {
     this.startLng,
     this.destLat,
     this.destLng,
+    this.includeRestaurants = false,
   });
 
   @override
@@ -124,6 +126,7 @@ class _TripResultScreenState extends State<TripResultScreen>
         startTime: widget.startTime,
         evRange: widget.evRange,
         vehicleType: widget.vehicleType,
+        includeRestaurants: widget.includeRestaurants,
       );
 
       final directions = await _directionsService.getDirections(

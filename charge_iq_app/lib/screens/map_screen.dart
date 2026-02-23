@@ -47,6 +47,9 @@ class MapScreenState extends State<MapScreen> {
   List<Map<String, dynamic>> _searchResults = [];
   bool _showSearchResults = false;
 
+  // Quick Charge AI setting
+  bool useAIForQuickCharge = true;
+
   // Cache settings
   static const String CACHE_KEY = 'ev_stations_cache';
   static const String CACHE_TIMESTAMP_KEY = 'ev_stations_timestamp';
@@ -63,7 +66,17 @@ class MapScreenState extends State<MapScreen> {
 
   Future<void> _initializeApp() async {
     await _loadCustomMarkers();
+    await _loadAIPref();
     await getCurrentLocation();
+  }
+
+  Future<void> _loadAIPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        useAIForQuickCharge = prefs.getBool('quick_charge_use_ai') ?? true;
+      });
+    }
   }
 
   @override
@@ -400,7 +413,7 @@ class MapScreenState extends State<MapScreen> {
           }).toList();
 
           if (nearby.isNotEmpty) {
-            debugPrint('✅ Loaded ${nearby.length} nearby stations from cache');
+            debugPrint('Loaded ${nearby.length} nearby stations from cache');
             _displayStations(nearby);
             setState(() {
               _allLoadedStations = nearby;
@@ -412,7 +425,7 @@ class MapScreenState extends State<MapScreen> {
       }
 
       // Load from API
-      debugPrint('📡 Searching for stations within ${SEARCH_RADIUS_KM}km...');
+      debugPrint('Searching for stations within ${SEARCH_RADIUS_KM}km...');
 
       final radiusMeters = (SEARCH_RADIUS_KM * 1000).toInt();
       final url =
@@ -509,7 +522,7 @@ class MapScreenState extends State<MapScreen> {
     });
 
     try {
-      debugPrint('⚡ Quick Charge: Finding BEST station within 30km...');
+      debugPrint('Quick Charge: Finding BEST station within 30km...');
 
       List<Map<String, dynamic>> nearbyStations = [];
 
@@ -654,42 +667,49 @@ class MapScreenState extends State<MapScreen> {
       // Display all nearby stations on map
       _displayStations(nearbyStations);
 
-      // Step 4: Use AI to select the BEST station
-      setState(() {
-        isAISelectingStation = true;
-      });
+      // Step 4: Optionally use AI to refine selection
+      Map<String, dynamic>? bestStation;
 
-      debugPrint('🤖 Asking AI to select optimal station...');
+      if (useAIForQuickCharge) {
+        setState(() {
+          isAISelectingStation = true;
+        });
 
-      final aiSelectedStation = await _geminiService.selectOptimalStation(
-        nearbyStations: nearbyStations,
-        currentLatitude: currentLocation!.latitude,
-        currentLongitude: currentLocation!.longitude,
-      );
+        debugPrint('Quick Charge: Asking AI to select optimal station...');
 
-      if (!mounted) return;
+        final aiSelectedStation = await _geminiService.selectOptimalStation(
+          nearbyStations: nearbyStations,
+          currentLatitude: currentLocation!.latitude,
+          currentLongitude: currentLocation!.longitude,
+        );
 
-      setState(() {
-        isAISelectingStation = false;
-      });
+        if (!mounted) return;
 
-      // Step 5: Use AI-selected station or fallback to top-scored station
-      final bestStation = aiSelectedStation ?? nearbyStations.first;
+        setState(() {
+          isAISelectingStation = false;
+        });
 
-      // Safe formatting for debug
+        bestStation = aiSelectedStation ?? nearbyStations.first;
+      } else {
+        // Scoring-only: top of already-sorted list
+        bestStation = nearbyStations.first;
+        debugPrint('Quick Charge: Using scoring algorithm (AI disabled).');
+      }
+
+      // Step 5: debug info
       final debugPrice = bestStation['price'] != null
           ? '\$${(bestStation['price']).toStringAsFixed(2)}'
           : 'N/A';
       final debugPorts = bestStation['available_ports']?.toString() ?? 'N/A';
-      final aiInfo = bestStation['selected_via_ai'] == true
-          ? ' [AI Selected - ${(bestStation['ai_confidence'] * 100).toStringAsFixed(0)}% confidence]'
-          : ' [Rule-based Score]';
+      final selMethod = bestStation['selected_via_ai'] == true
+          ? '[AI Selected - ${(bestStation['ai_confidence'] * 100).toStringAsFixed(0)}% confidence]'
+          : '[Score-based]';
 
       debugPrint(
-        '⚡ Best station: ${bestStation['name']} '
+        'Best station: ${bestStation['name']} '
         '(Dist: ${bestStation['distance'].toStringAsFixed(1)}km, '
         'Ports: $debugPorts, '
-        'Price: $debugPrice)$aiInfo',
+        'Price: $debugPrice) $selMethod',
       );
 
       // Step 6: Show the best station details card
@@ -699,7 +719,7 @@ class MapScreenState extends State<MapScreen> {
       final bestPos = LatLng(bestStation['lat'], bestStation['lng']);
       mapController?.animateCamera(CameraUpdate.newLatLngZoom(bestPos, 15));
     } catch (e) {
-      debugPrint('Quick Charge Error: $e');
+      debugPrint('Quick Charge error: $e');
       _showSnackBar('Unable to find charging stations', isError: true);
     } finally {
       if (mounted) {
@@ -902,8 +922,14 @@ class MapScreenState extends State<MapScreen> {
                       children: [
                         Row(
                           children: [
+                            const Icon(
+                              Icons.auto_awesome,
+                              color: Color(0xFF4285F4),
+                              size: 14,
+                            ),
+                            const SizedBox(width: 5),
                             const Text(
-                              '🤖 AI Recommended',
+                              'AI Recommended',
                               style: TextStyle(
                                 color: Color(0xFF4285F4),
                                 fontSize: 12,
@@ -1569,123 +1595,177 @@ class MapScreenState extends State<MapScreen> {
                     color: Color(0xFF1A1A2E),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _tripDestination,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _tripDestination.isNotEmpty
+                          ? _tripDestination
+                          : 'Destination',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF1A1A2E),
                       ),
-                      const SizedBox(height: 2),
-                      Row(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (_tripDestination.contains(',') ||
+                        _tripDestination.contains('+'))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          _tripDestination.length > 40
+                              ? '${_tripDestination.substring(0, 40)}...'
+                              : _tripDestination,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Bottom panel: drag handle, distance/duration chips, Start Navigation button.
+  Widget _buildTripRoutePanel() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 24,
+              offset: const Offset(0, -6),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Distance and duration chips
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildTripRouteInfoChip(
+                        Icons.route_rounded,
+                        _tripDistance.isNotEmpty ? _tripDistance : '—',
+                        const Color(0xFF4285F4),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildTripRouteInfoChip(
+                        Icons.access_time_filled_rounded,
+                        _tripDuration.isNotEmpty ? _tripDuration : '—',
+                        const Color(0xFFEA4335),
+                      ),
+                    ),
+                  ],
+                ),
+                // Stops chips (when present)
+                if (_tripStops.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 32,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _tripStops.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 6),
+                      itemBuilder: (context, index) {
+                        return _buildTripStopChip(_tripStops[index], index);
+                      },
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                // Start Navigation — opens Google Navigation
+                if (_tripDestLatLng != null)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => GoogleNavScreen(
+                              destinationLat: _tripDestLatLng!.latitude,
+                              destinationLng: _tripDestLatLng!.longitude,
+                              destinationName: _tripDestination.isNotEmpty
+                                  ? _tripDestination
+                                  : 'Destination',
+                              destinationAddress: _tripDestination.length > 50
+                                  ? _tripDestination
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4285F4),
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        shadowColor: const Color(0xFF4285F4).withOpacity(0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          Icon(Icons.navigation_rounded, size: 22),
+                          SizedBox(width: 10),
                           Text(
-                            _tripDistance,
+                            'Start Navigation',
                             style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            '  •  ',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 13,
-                            ),
-                          ),
-                          Text(
-                            _tripDuration,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF4285F4),
-                              fontWeight: FontWeight.w600,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                // Close button
-                InkWell(
-                  onTap: _clearTripRoute,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.close, size: 18, color: Colors.red[400]),
                   ),
-                ),
               ],
             ),
-            // Stops chips
-            if (_tripStops.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 32,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _tripStops.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 6),
-                  itemBuilder: (context, index) {
-                    final stop = _tripStops[index];
-                    return _buildTripStopChip(stop, index);
-                  },
-                ),
-              ),
-            ],
-            // ── Navigate via Google Navigation SDK ──────────────────────
-            if (_tripDestLatLng != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => GoogleNavScreen(
-                          destinationLat: _tripDestLatLng!.latitude,
-                          destinationLng: _tripDestLatLng!.longitude,
-                          destinationName: _tripDestination.isNotEmpty
-                              ? _tripDestination
-                              : 'Destination',
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.navigation_rounded, size: 18),
-                  label: const Text(
-                    'Navigate',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4285F4),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -2204,75 +2284,6 @@ class MapScreenState extends State<MapScreen> {
             _buildTripRoutePanel(),
           ],
 
-          // Unified Loading Card - Show while finding stations or AI is selecting
-          if (isLoadingStations || isAISelectingStation)
-            Positioned(
-              bottom: 140,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF4285F4).withOpacity(0.15),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF4285F4),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isAISelectingStation
-                                ? '🤖 Selecting Best Station '
-                                : '⚡ Finding Nearby Stations',
-                            style: const TextStyle(
-                              color: Color(0xFF1A1A2E),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            isAISelectingStation
-                                ? 'Analyzing with Gemini AI'
-                                : 'Using Google Maps API',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );

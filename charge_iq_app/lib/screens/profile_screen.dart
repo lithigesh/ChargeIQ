@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/vehicle.dart';
 import '../services/auth_service.dart';
 import '../services/vehicle_service.dart';
@@ -17,11 +18,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
   final VehicleService _vehicleService = VehicleService();
   User? _user;
+  bool _quickChargeUseAI = true;
+
+  static const String _aiPrefKey = 'quick_charge_use_ai';
 
   @override
   void initState() {
     super.initState();
     _user = _authService.currentUser;
+    _loadAIPref();
+  }
+
+  Future<void> _loadAIPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _quickChargeUseAI = prefs.getBool(_aiPrefKey) ?? true;
+    });
+  }
+
+  Future<void> _saveAIPref(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_aiPrefKey, value);
   }
 
   Future<void> _signOut() async {
@@ -263,6 +280,114 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
+
+                  // Quick Charge AI Toggle
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade100),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0F2F1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.psychology_outlined,
+                              color: Color(0xFF00D26A),
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'AI for Quick Charge',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _quickChargeUseAI
+                                      ? 'Gemini AI picks the best station'
+                                      : 'Scoring algorithm used instead',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _quickChargeUseAI,
+                            onChanged: (val) async {
+                              setState(() => _quickChargeUseAI = val);
+                              await _saveAIPref(val);
+                              // Also update live MapScreen state via MainScreen if accessible
+                              final ctx = context;
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(ctx).clearSnackBars();
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  SnackBar(
+                                    behavior: SnackBarBehavior.floating,
+                                    margin: const EdgeInsets.fromLTRB(
+                                        16, 0, 16, 16),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    backgroundColor: val
+                                        ? const Color(0xFF1565C0)
+                                        : const Color(0xFF546E7A),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    duration: const Duration(seconds: 2),
+                                    content: Row(
+                                      children: [
+                                        Icon(
+                                          val
+                                              ? Icons.psychology_outlined
+                                              : Icons.calculate_outlined,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          val
+                                              ? 'AI station selection enabled'
+                                              : 'Scoring algorithm enabled',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            activeColor: const Color(0xFF00D26A),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
 
                   _buildSettingItem(
                     'Payment Methods',

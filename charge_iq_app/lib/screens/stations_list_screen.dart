@@ -7,7 +7,6 @@ import 'dart:convert';
 import 'dart:math' show cos, sqrt, asin, sin;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:charge_iq_app/screens/navigation_screen.dart';
 import 'package:charge_iq_app/screens/google_nav_screen.dart';
 
 class StationsListScreen extends StatefulWidget {
@@ -582,66 +581,10 @@ class _StationsListScreenState extends State<StationsListScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Action Buttons
+                    // Action Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-
-                          if (currentLocation == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Current location not available. Please enable location services.',
-                                ),
-                              ),
-                            );
-                            return;
-                          }
-
-                          final startLocation =
-                              '${currentLocation!.latitude},${currentLocation!.longitude}';
-                          final destination =
-                              '${lat.toStringAsFixed(6)},${lng.toStringAsFixed(6)}';
-
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (ctx) => NavigationScreen(
-                                startLocation: startLocation,
-                                destination: destination,
-                                routeSegments: const [],
-                                destinationName: name,
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.directions),
-                        label: const Text(
-                          'View Route & ETA',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4285F4),
-                          foregroundColor: Colors.white,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
                         onPressed: () {
                           Navigator.pop(context);
                           Navigator.of(context).push(
@@ -656,15 +599,21 @@ class _StationsListScreenState extends State<StationsListScreen> {
                           );
                         },
                         icon: const Icon(Icons.navigation_rounded),
-                        label: const Text('Start Live Navigation'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF4285F4),
-                          side: const BorderSide(color: Color(0xFF4285F4)),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 16),
+                        label: const Text(
+                          'Start Navigation',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4285F4),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          elevation: 0,
                         ),
                       ),
                     ),
