@@ -24,6 +24,7 @@ class MapScreenState extends State<MapScreen> {
   Set<Polyline> polylines = {};
   GoogleMapController? mapController;
   final TextEditingController searchController = TextEditingController();
+  final FocusNode searchFocusNode = FocusNode();
   bool isLoadingStations = false;
   bool isLoadingDirections = false;
   bool isAISelectingStation = false;
@@ -51,8 +52,8 @@ class MapScreenState extends State<MapScreen> {
   bool useAIForQuickCharge = true;
 
   // Cache settings
-  static const String CACHE_KEY = 'ev_stations_cache';
-  static const String CACHE_TIMESTAMP_KEY = 'ev_stations_timestamp';
+  static const String CACHE_KEY = 'map_ev_stations_cache';
+  static const String CACHE_TIMESTAMP_KEY = 'map_ev_stations_timestamp';
   static const int CACHE_DURATION_DAYS = 7;
   static const double SEARCH_RADIUS_KM = 30.0;
 
@@ -82,6 +83,7 @@ class MapScreenState extends State<MapScreen> {
   @override
   void dispose() {
     searchController.dispose();
+    searchFocusNode.dispose();
     mapController?.dispose();
     super.dispose();
   }
@@ -738,9 +740,10 @@ class MapScreenState extends State<MapScreen> {
       markers.removeWhere((m) => m.markerId.value.startsWith('ChIJ'));
 
       for (var station in stations) {
+        final markerId = (station['id'] ?? station['placeId'] ?? '${station['lat']}_${station['lng']}').toString();
         markers.add(
           Marker(
-            markerId: MarkerId(station['id']),
+            markerId: MarkerId(markerId),
             position: LatLng(station['lat'], station['lng']),
             icon:
                 customEVIcon ??
@@ -1856,19 +1859,19 @@ class MapScreenState extends State<MapScreen> {
   // Search functionality
   void _onSearchChanged() {
     final query = searchController.text.toLowerCase();
-    if (query.isEmpty) {
+    
+    // Determine the new search results based on the query
+    final results = query.isEmpty ? <Map<String, dynamic>>[] : _filterStations(query);
+    final showResults = results.isNotEmpty;
+    
+    // Only rebuild the widget tree if there's a difference in whether we are 
+    // showing the overlay, OR if the overlay is ACTIVELY being shown.
+    if (_showSearchResults != showResults || _showSearchResults) {
       setState(() {
-        _showSearchResults = false;
-        _searchResults = [];
+        _searchResults = results;
+        _showSearchResults = showResults;
       });
-      return;
     }
-
-    final results = _filterStations(query);
-    setState(() {
-      _searchResults = results;
-      _showSearchResults = results.isNotEmpty;
-    });
   }
 
   List<Map<String, dynamic>> _filterStations(String query) {
@@ -1929,125 +1932,58 @@ class MapScreenState extends State<MapScreen> {
             },
           ),
 
-          // Search Bar - Fixed at top
-          if (!_showSearchResults)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 16,
-              left: 16,
-              right: 16,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search charging stations...',
-                    hintStyle: TextStyle(color: Colors.grey[500]),
-                    prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
-                    suffixIcon: searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.close, color: Colors.grey[600]),
-                            onPressed: () {
-                              searchController.clear();
-                              setState(() {
-                                _showSearchResults = false;
-                              });
-                            },
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+          // Search Bar and Results Overlay
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 16,
+            right: 16,
+            bottom: _showSearchResults ? 16 : null,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Persistent Search Input
+                  TextField(
+                    controller: searchController,
+                    focusNode: searchFocusNode,
+                    decoration: InputDecoration(
+                      hintText: 'Search charging stations...',
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                      suffixIcon: searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.close, color: Colors.grey[600]),
+                              onPressed: () {
+                                searchController.clear();
+                                searchFocusNode.unfocus();
+                                setState(() {
+                                  _showSearchResults = false;
+                                });
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ),
-
-          // Full Screen Search Results Overlay
-          if (_showSearchResults)
-            Positioned.fill(
-              child: Container(
-                color: Colors.white,
-                child: Column(
-                  children: [
-                    // Search Input in Full Screen
-                    Container(
-                      padding: EdgeInsets.only(
-                        top: MediaQuery.of(context).padding.top + 16,
-                        left: 16,
-                        right: 16,
-                        bottom: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: TextField(
-                                controller: searchController,
-                                autofocus: true,
-                                decoration: InputDecoration(
-                                  hintText: 'Search charging stations...',
-                                  hintStyle: TextStyle(color: Colors.grey[500]),
-                                  prefixIcon: Icon(
-                                    Icons.search,
-                                    color: Colors.grey[600],
-                                  ),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          InkWell(
-                            onTap: () {
-                              searchController.clear();
-                              setState(() {
-                                _showSearchResults = false;
-                              });
-                            },
-                            borderRadius: BorderRadius.circular(20),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.close, size: 20),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Search Results List
+                  
+                  // Search Results List (Only shown when searching)
+                  if (_showSearchResults) ...[
+                    const Divider(height: 1, thickness: 1),
                     Expanded(
                       child: _searchResults.isEmpty
                           ? Center(
@@ -2056,31 +1992,23 @@ class MapScreenState extends State<MapScreen> {
                                 children: [
                                   Icon(
                                     Icons.search,
-                                    size: 80,
+                                    size: 60,
                                     color: Colors.grey[300],
                                   ),
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 12),
                                   Text(
                                     'No stations found',
                                     style: TextStyle(
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.grey[600],
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Try searching with a different name or location',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[500],
-                                    ),
-                                    textAlign: TextAlign.center,
                                   ),
                                 ],
                               ),
                             )
                           : ListView.builder(
+                              padding: EdgeInsets.zero,
                               itemCount: _searchResults.length,
                               itemBuilder: (context, index) {
                                 final station = _searchResults[index];
@@ -2097,7 +2025,7 @@ class MapScreenState extends State<MapScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 16,
-                                      vertical: 16,
+                                      vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
                                       border: Border(
@@ -2110,19 +2038,19 @@ class MapScreenState extends State<MapScreen> {
                                     child: Row(
                                       children: [
                                         Container(
-                                          padding: const EdgeInsets.all(10),
+                                          padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
                                             color: const Color(
                                               0xFF10B981,
                                             ).withValues(alpha: 0.1),
                                             borderRadius: BorderRadius.circular(
-                                              10,
+                                              8,
                                             ),
                                           ),
                                           child: const Icon(
                                             Icons.ev_station,
                                             color: Color(0xFF10B981),
-                                            size: 24,
+                                            size: 20,
                                           ),
                                         ),
                                         const SizedBox(width: 12),
@@ -2135,16 +2063,16 @@ class MapScreenState extends State<MapScreen> {
                                                 station['name'] ?? 'Station',
                                                 style: const TextStyle(
                                                   fontWeight: FontWeight.w600,
-                                                  fontSize: 16,
+                                                  fontSize: 15,
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
-                                              const SizedBox(height: 4),
+                                              const SizedBox(height: 2),
                                               Text(
                                                 station['vicinity'] ?? '',
                                                 style: TextStyle(
-                                                  fontSize: 13,
+                                                  fontSize: 12,
                                                   color: Colors.grey[600],
                                                 ),
                                                 maxLines: 1,
@@ -2153,7 +2081,7 @@ class MapScreenState extends State<MapScreen> {
                                             ],
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: 8),
                                         Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.end,
@@ -2164,25 +2092,25 @@ class MapScreenState extends State<MapScreen> {
                                                 children: [
                                                   Icon(
                                                     Icons.star,
-                                                    size: 16,
+                                                    size: 14,
                                                     color: Colors.amber[700],
                                                   ),
-                                                  const SizedBox(width: 4),
+                                                  const SizedBox(width: 2),
                                                   Text(
                                                     rating,
                                                     style: const TextStyle(
-                                                      fontSize: 13,
+                                                      fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w600,
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                            const SizedBox(height: 4),
+                                            const SizedBox(height: 2),
                                             Text(
                                               '${distance}km',
                                               style: const TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 11,
                                                 color: Color(0xFF4285F4),
                                                 fontWeight: FontWeight.w600,
                                               ),
@@ -2197,9 +2125,10 @@ class MapScreenState extends State<MapScreen> {
                             ),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
+          ),
 
           // Trip route loading overlay
           if (isLoadingDirections && _showingTripRoute)
