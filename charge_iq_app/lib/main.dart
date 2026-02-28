@@ -116,7 +116,9 @@ class _InitializationScreenState extends State<InitializationScreen> {
     try {
       // Run initialization and minimum splash duration in parallel
       await Future.wait([
-        Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
+        Firebase.apps.isEmpty 
+            ? Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)
+            : Future.value(),
         Future.delayed(
           const Duration(milliseconds: 1500),
         ), // Minimum splash time
