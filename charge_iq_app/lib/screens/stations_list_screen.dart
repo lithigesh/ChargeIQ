@@ -8,6 +8,8 @@ import 'dart:math' show cos, sqrt, asin, sin;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:charge_iq_app/screens/google_nav_screen.dart';
+import '../models/vehicle.dart';
+import '../services/vehicle_service.dart';
 
 class StationsListScreen extends StatefulWidget {
   const StationsListScreen({super.key});
@@ -27,6 +29,10 @@ class _StationsListScreenState extends State<StationsListScreen> {
   bool isSearching = false;
   TextEditingController searchController = TextEditingController();
 
+  final VehicleService _vehicleService = VehicleService();
+  List<Vehicle> userVehicles = [];
+  Vehicle? selectedVehicle;
+
   // Cache settings
   static const String CACHE_KEY = 'ev_stations_cache';
   static const String CACHE_TIMESTAMP_KEY = 'ev_stations_timestamp';
@@ -41,8 +47,59 @@ class _StationsListScreenState extends State<StationsListScreen> {
   }
 
   Future<void> _initializeScreen() async {
+    _loadUserVehicles();
+    await _clearBadCache();
     await _getCurrentLocation();
     await _loadNearbyStations();
+  }
+
+  Future<void> _clearBadCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(CACHE_KEY);
+      if (cached != null) {
+        final decoded = jsonDecode(cached) as List;
+        if (decoded.isNotEmpty) {
+          final first = Map<String, dynamic>.from(decoded[0] as Map);
+          if (!first.containsKey('lat') || !first.containsKey('lng') || !first.containsKey('name')) {
+            await prefs.remove(CACHE_KEY);
+            await prefs.remove(CACHE_TIMESTAMP_KEY);
+          }
+        }
+      }
+    } catch (e) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(CACHE_KEY);
+      await prefs.remove(CACHE_TIMESTAMP_KEY);
+    }
+  }
+
+  void _loadUserVehicles() {
+    _vehicleService.getUserVehicles().listen((vehicles) async {
+      if (mounted) {
+        setState(() {
+          userVehicles = vehicles;
+        });
+        
+        if (selectedVehicle == null && vehicles.isNotEmpty) {
+          final defaultVehicle = await _vehicleService.getDefaultVehicle();
+          if (mounted) {
+            setState(() {
+              // Try to find the default vehicle in the loaded list, or just use the first one
+              if (defaultVehicle != null) {
+                try {
+                  selectedVehicle = vehicles.firstWhere((v) => v.id == defaultVehicle.id);
+                } catch (_) {
+                  selectedVehicle = vehicles.first;
+                }
+              } else {
+                selectedVehicle = vehicles.first;
+              }
+            });
+          }
+        }
+      }
+    });
   }
 
   @override
@@ -214,10 +271,13 @@ class _StationsListScreenState extends State<StationsListScreen> {
       final cached = prefs.getString(CACHE_KEY);
       if (cached != null) {
         final List<dynamic> decoded = jsonDecode(cached);
-        return decoded.cast<Map<String, dynamic>>();
+        return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
     } catch (e) {
       debugPrint('Error loading cache: $e');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(CACHE_KEY);
+      await prefs.remove(CACHE_TIMESTAMP_KEY);
     }
     return null;
   }
@@ -233,7 +293,7 @@ class _StationsListScreenState extends State<StationsListScreen> {
   }
 
   // Load nearby stations from Google Places API
-  Future<void> _loadNearbyStations() async {
+  Future<void> _loadNearbyStations({String? keyword}) async {
     if (currentLocation == null) {
       if (mounted) {
         setState(() {
@@ -244,8 +304,8 @@ class _StationsListScreenState extends State<StationsListScreen> {
     }
 
     try {
-      // Check cache first
-      if (await _isCacheValid()) {
+      // Check cache first ONLY if no keyword is provided (we don't cache keyword searches right now to keep it simple)
+      if (keyword == null && await _isCacheValid()) {
         final cached = await _loadCachedStations();
         if (cached != null && cached.isNotEmpty) {
           if (mounted) {
@@ -263,13 +323,18 @@ class _StationsListScreenState extends State<StationsListScreen> {
       const String placeType = 'electric_vehicle_charging_station';
       final int radiusMeters = (SEARCH_RADIUS_KM * 1000).toInt();
 
-      final url = Uri.parse(
-        'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
-        '?location=${currentLocation!.latitude},${currentLocation!.longitude}'
-        '&radius=$radiusMeters'
-        '&type=$placeType'
-        '&key=$apiKey',
-      );
+      String urlStr =
+          'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+          '?location=${currentLocation!.latitude},${currentLocation!.longitude}'
+          '&radius=$radiusMeters'
+          '&type=$placeType'
+          '&key=$apiKey';
+
+      if (keyword != null && keyword.isNotEmpty) {
+        urlStr += '&keyword=${Uri.encodeComponent(keyword)}';
+      }
+
+      final url = Uri.parse(urlStr);
 
       final response = await http.get(url);
 
@@ -351,20 +416,10 @@ class _StationsListScreenState extends State<StationsListScreen> {
   }
 
   void _searchStations(String query) {
-    List<Map<String, dynamic>> results = allStations;
+    List<Map<String, dynamic>> results = List.from(allStations);
 
-    // Apply filter
-    if (selectedFilter == 'Supercharger') {
-      results = results
-          .where((s) => s['name'].toString().toLowerCase().contains('supercharger'))
-          .toList();
-    } else if (selectedFilter == 'Fast Charge') {
-      results = results
-          .where((s) =>
-              s['name'].toString().toLowerCase().contains('fast') ||
-              s['name'].toString().toLowerCase().contains('rapid'))
-          .toList();
-    } else if (selectedFilter == 'Available Now') {
+    // Apply Filter
+    if (selectedFilter == 'Available Now') {
       results = results.where((s) => s['isOpen'] == true).toList();
     }
 
@@ -380,6 +435,26 @@ class _StationsListScreenState extends State<StationsListScreen> {
     setState(() {
       filteredStations = results;
     });
+  }
+
+  Future<void> _fetchStationsForVehicle(Vehicle vehicle) async {
+    setState(() {
+      selectedVehicle = vehicle;
+      isLoading = true;
+    });
+
+    String keyword = vehicle.brand;
+    final portLower = vehicle.chargingPortType.toLowerCase();
+    
+    if (vehicle.brand.toLowerCase() == 'tesla') {
+      keyword = 'Tesla Supercharger';
+    } else if (portLower.contains('ccs') || portLower.contains('chademo')) {
+      keyword = '${vehicle.brand} ${vehicle.chargingPortType} charging';
+    } else {
+      keyword = '${vehicle.brand} EV charging';
+    }
+
+    await _loadNearbyStations(keyword: keyword);
   }
 
   void _showStationDetailsModal(Map<String, dynamic> station) {
@@ -672,7 +747,7 @@ class _StationsListScreenState extends State<StationsListScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
-                          vertical: 40,
+                          vertical: 24,
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -685,12 +760,11 @@ class _StationsListScreenState extends State<StationsListScreen> {
                                 color: Colors.white,
                               ),
                             ),
-                            
                           ],
                         ),
                       ),
 
-                      const SizedBox(height: 150), // Space for floating box
+                      const SizedBox(height: 100), // Adjusted space for floating box
 
                       // Summary Cards
                       Padding(
@@ -753,7 +827,7 @@ class _StationsListScreenState extends State<StationsListScreen> {
 
                 // Floating Search Box
                 Positioned(
-                  top: 135,
+                  top: 90,
                   left: 20,
                   right: 20,
                   child: Container(
@@ -769,10 +843,66 @@ class _StationsListScreenState extends State<StationsListScreen> {
                       ],
                     ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // Vehicle Selector Dropdown
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4, right: 4, top: 4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String?>(
+                                value: userVehicles.isEmpty 
+                                    ? null 
+                                    : (userVehicles.any((v) => v.id == selectedVehicle?.id) 
+                                        ? selectedVehicle?.id 
+                                        : userVehicles.first.id),
+                                icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF1565C0)),
+                                isExpanded: true,
+                                hint: userVehicles.isEmpty 
+                                    ? Row(
+                                        children: [
+                                          const Icon(Icons.electric_car_rounded, color: Colors.grey, size: 18),
+                                          const SizedBox(width: 10),
+                                          const Text('No vehicles saved. Add in Profile.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                                        ],
+                                      )
+                                    : null,
+                                style: const TextStyle(
+                                  color: Color(0xFF1E293B),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                onChanged: userVehicles.isEmpty ? null : (String? newId) {
+                                  if (newId != null && newId != selectedVehicle?.id) {
+                                    final newValue = userVehicles.firstWhere((v) => v.id == newId);
+                                    _fetchStationsForVehicle(newValue);
+                                  }
+                                },
+                                items: userVehicles.isEmpty ? [] : userVehicles.map<DropdownMenuItem<String?>>((Vehicle vehicle) {
+                                  return DropdownMenuItem<String?>(
+                                    value: vehicle.id,
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.electric_car_rounded, color: Color(0xFF1565C0), size: 18),
+                                        const SizedBox(width: 10),
+                                        Text('${vehicle.brand} ${vehicle.model}'),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                        ),
+
                         // Search Bar - Improved padding
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                           child: Row(
                             children: [
                               Icon(Icons.search,
@@ -815,13 +945,6 @@ class _StationsListScreenState extends State<StationsListScreen> {
                             children: [
                               _buildFilterChip('All Types',
                                   isSelected: selectedFilter == 'All Types'),
-                              const SizedBox(width: 12),
-                              _buildFilterChip('Supercharger',
-                                  isSelected:
-                                      selectedFilter == 'Supercharger'),
-                              const SizedBox(width: 12),
-                              _buildFilterChip('Fast Charge',
-                                  isSelected: selectedFilter == 'Fast Charge'),
                               const SizedBox(width: 12),
                               _buildFilterChip('Available Now',
                                   isSelected:
@@ -905,190 +1028,244 @@ class _StationsListScreenState extends State<StationsListScreen> {
     final location = station['vicinity'] as String;
     final distance = (station['distance'] as double).toStringAsFixed(1);
     final rating = station['rating'] as double;
+    final totalRatings = station['userRatingsTotal'] ?? 0;
     final isOpen = station['isOpen'] ?? false;
+
+    // Add visual cues if it matches the selected vehicle implicitly (e.g. Tesla for Supercharger)
+    bool isRecommended = false;
+    if (selectedVehicle != null) {
+      final brand = selectedVehicle!.brand.toLowerCase();
+      final nameLower = name.toLowerCase();
+      if ((brand.contains('tesla') && nameLower.contains('supercharger')) ||
+          nameLower.contains(brand)) {
+        isRecommended = true;
+      }
+    }
 
     return GestureDetector(
       onTap: () => _showStationDetailsModal(station),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
+          border: isRecommended ? Border.all(color: const Color(0xFF4285F4), width: 1.5) : Border.all(color: Colors.grey.shade100),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Row
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (isRecommended)
                 Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00D26A),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.ev_station,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  color: const Color(0xFF4285F4).withValues(alpha: 0.1),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      Icon(Icons.stars_rounded, color: Color(0xFF4285F4), size: 14),
+                      SizedBox(width: 6),
                       Text(
-                        name,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        'Recommended for your EV',
+                        style: TextStyle(
+                          color: Color(0xFF4285F4),
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        location,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1565C0),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.near_me,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // Status and Details Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Status
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isOpen ? Colors.green[50] : Colors.red[50],
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isOpen ? Colors.green : Colors.red,
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: isOpen ? Colors.green : Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isOpen ? 'Open Now' : 'Closed',
-                        style: TextStyle(
-                          color: isOpen ? Colors.green[900] : Colors.red[900],
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Distance
-                Row(
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.location_on,
-                        color: Colors.grey[400], size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$distance km',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
+                    // Header Row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00D26A), Color(0xFF00BFA5)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00D26A).withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.ev_station_rounded,
+                            color: Colors.white,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.3,
+                                  color: Color(0xFF1E293B),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Icon(Icons.location_on_rounded, size: 14, color: Colors.grey[500]),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      location,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[600],
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Distance Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4285F4).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.near_me_rounded, color: Color(0xFF4285F4), size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${distance}km',
+                                style: const TextStyle(
+                                  color: Color(0xFF4285F4),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+                    const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+                    const SizedBox(height: 16),
+
+                    // Status and Details Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isOpen ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: isOpen ? const Color(0xFF4CAF50) : const Color(0xFFF44336),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isOpen ? 'Open Now' : 'Closed',
+                                style: TextStyle(
+                                  color: isOpen ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Rating
+                        if (rating > 0)
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      rating.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFFB45309), // Dark amber
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (totalRatings > 0) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  '($totalRatings)',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[500],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                      ],
                     ),
                   ],
                 ),
-
-                // Rating
-                if (rating > 0)
-                  Row(
-                    children: [
-                      const Icon(Icons.star,
-                          color: Colors.amber, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        rating.toStringAsFixed(1),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // View Details & Navigate Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _showStationDetailsModal(station),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4285F4),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'View Details & Navigate',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -52,8 +52,8 @@ class MapScreenState extends State<MapScreen> {
   bool useAIForQuickCharge = true;
 
   // Cache settings
-  static const String CACHE_KEY = 'ev_stations_cache';
-  static const String CACHE_TIMESTAMP_KEY = 'ev_stations_timestamp';
+  static const String CACHE_KEY = 'map_ev_stations_cache';
+  static const String CACHE_TIMESTAMP_KEY = 'map_ev_stations_timestamp';
   static const int CACHE_DURATION_DAYS = 7;
   static const double SEARCH_RADIUS_KM = 30.0;
 
@@ -740,9 +740,10 @@ class MapScreenState extends State<MapScreen> {
       markers.removeWhere((m) => m.markerId.value.startsWith('ChIJ'));
 
       for (var station in stations) {
+        final markerId = (station['id'] ?? station['placeId'] ?? '${station['lat']}_${station['lng']}').toString();
         markers.add(
           Marker(
-            markerId: MarkerId(station['id']),
+            markerId: MarkerId(markerId),
             position: LatLng(station['lat'], station['lng']),
             icon:
                 customEVIcon ??
