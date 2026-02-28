@@ -8,6 +8,7 @@ import '../services/trip_service.dart';
 import '../services/vehicle_service.dart';
 import '../models/trip_plan.dart';
 import 'trip_result_screen.dart';
+import 'all_trips_screen.dart';
 
 class TripPlanningScreen extends StatefulWidget {
   const TripPlanningScreen({super.key});
@@ -237,18 +238,8 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       }
     }
 
-    // Get the minimum range across selected vehicles
-    final minRange = _selectedVehicles
-        .map((v) => v.maxRange)
-        .reduce((a, b) => a < b ? a : b);
-
-    // Build a vehicle name string
-    final vehicleNames = _selectedVehicles
-        .map((v) => '${v.brand} ${v.model}')
-        .join(', ');
-
-    // Use the first selected vehicle as primary vehicle for the trip
-    final primaryVehicle = _selectedVehicles.first;
+    // Use the selected vehicle
+    final selectedVehicle = _selectedVehicles.first;
 
     if (!mounted) return;
 
@@ -260,9 +251,9 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
         builder: (context) => TripResultScreen(
           startLocation: finalStartLocation,
           destination: _destinationLocationName!,
-          vehicleId: primaryVehicle.id,
-          evRange: minRange.toStringAsFixed(0),
-          vehicleType: vehicleNames,
+          vehicleId: selectedVehicle.id,
+          evRange: selectedVehicle.maxRange.toStringAsFixed(0),
+          vehicleType: '${selectedVehicle.brand} ${selectedVehicle.model}',
           useCurrentLocation: _useCurrentLocation,
           vehicles: _selectedVehicles,
           startTime: _getStartTimeString(),
@@ -324,9 +315,6 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   }
 
   void _showVehicleSelector() {
-    // Create a temporary selection list
-    final tempSelected = List<Vehicle>.from(_selectedVehicles);
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -334,8 +322,9 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
+        Vehicle? sheetSelected = _selectedVehicles.isNotEmpty ? _selectedVehicles.first : null;
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (context, setSheetState) {
             return DraggableScrollableSheet(
               initialChildSize: 0.55,
               maxChildSize: 0.85,
@@ -357,40 +346,20 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                       ),
                     ),
                     // Title
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
+                    const Padding(
+                      padding: EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 8,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Select Vehicles',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Select Vehicle',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedVehicles = List<Vehicle>.from(
-                                  tempSelected,
-                                );
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: const Text(
-                              'Done',
-                              style: TextStyle(
-                                color: Color(0xFF1565C0),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                     const Divider(height: 1),
@@ -431,9 +400,8 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                               itemCount: _allVehicles.length,
                               itemBuilder: (context, index) {
                                 final vehicle = _allVehicles[index];
-                                final isSelected = tempSelected.any(
-                                  (v) => v.id == vehicle.id,
-                                );
+                                final isSelected = sheetSelected != null &&
+                                    sheetSelected!.id == vehicle.id;
 
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 10),
@@ -441,14 +409,14 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                     vehicle,
                                     isSelected,
                                     () {
-                                      setModalState(() {
-                                        if (isSelected) {
-                                          tempSelected.removeWhere(
-                                            (v) => v.id == vehicle.id,
-                                          );
-                                        } else {
-                                          tempSelected.add(vehicle);
-                                        }
+                                      setSheetState(() {
+                                        sheetSelected = vehicle;
+                                      });
+                                      setState(() {
+                                        _selectedVehicles = [vehicle];
+                                      });
+                                      Future.delayed(const Duration(milliseconds: 350), () {
+                                        if (mounted) Navigator.pop(context);
                                       });
                                     },
                                   ),
@@ -492,10 +460,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE8F5E9) : Colors.white,
+          color: isSelected ? const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.1) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? const Color(0xFF10B981) : Colors.grey.shade200,
+            color: isSelected ? const Color.fromARGB(255, 51, 155, 33) : Colors.grey.shade200,
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [
@@ -512,7 +480,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFF10B981)
+                    ? const Color.fromARGB(255, 51, 155, 33)
                     : const Color(0xFF263238),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -560,25 +528,32 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               ],
             ),
             const SizedBox(width: 10),
-            // Checkbox indicator
+            // Radio indicator
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 24,
               height: 24,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF10B981)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
+                color: Colors.transparent,
+                shape: BoxShape.circle,
                 border: Border.all(
                   color: isSelected
-                      ? const Color(0xFF10B981)
+                      ? const Color.fromARGB(255, 51, 155, 33)
                       : Colors.grey.shade400,
                   width: 2,
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check, size: 16, color: Colors.white)
+                  ? Center(
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: const BoxDecoration(
+                          color: Color.fromARGB(255, 51, 155, 33),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    )
                   : null,
             ),
           ],
@@ -606,9 +581,44 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   _buildActionButtons(),
                   const SizedBox(height: 24),
                   const SizedBox(height: 30),
-                  const Text(
-                    'Recent Plans',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Recent Plans',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AllTripsScreen(
+                                selectedVehicles: _selectedVehicles,
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Row(
+                          children: [
+                            Text(
+                              'View All',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color.fromARGB(255, 51, 155, 33),
+                              ),
+                            ),
+                            SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: Color.fromARGB(255, 51, 155, 33),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   _buildRecentTripsList(),
@@ -762,9 +772,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   Icon(Icons.keyboard_arrow_down, color: Colors.grey[400]),
                 ],
               )
-            : _selectedVehicles.length == 1
-            ? _buildSingleVehicleDisplay(_selectedVehicles.first)
-            : _buildMultiVehicleDisplay(),
+            : _buildSingleVehicleDisplay(_selectedVehicles.first),
       ),
     );
   }
@@ -970,10 +978,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     if (selected) _startLocationName = null;
                   });
                 },
-                selectedColor: const Color(0xFF00D26A).withValues(alpha: 0.2),
+                selectedColor: const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.2),
                 labelStyle: TextStyle(
                   color: _useCurrentLocation
-                      ? const Color(0xFF00D26A)
+                      ? const Color.fromARGB(255, 51, 155, 33)
                       : Colors.black,
                   fontWeight: _useCurrentLocation
                       ? FontWeight.bold
@@ -1024,6 +1032,85 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     setState(() {
                       _startLocationName = selection;
                     });
+                  },
+                  optionsViewBuilder: (context, onSelected, options) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 6,
+                        shadowColor: Colors.black.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.white,
+                        child: Container(
+                          width: constraints.maxWidth,
+                          constraints: const BoxConstraints(maxHeight: 260),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade100),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: ListView.separated(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shrinkWrap: true,
+                              itemCount: options.length,
+                              separatorBuilder: (_, __) => Divider(
+                                height: 1,
+                                indent: 56,
+                                endIndent: 16,
+                                color: Colors.grey.shade100,
+                              ),
+                              itemBuilder: (context, index) {
+                                final option = options.elementAt(index);
+                                return InkWell(
+                                  onTap: () => onSelected(option),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 12,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: const Icon(
+                                            Icons.location_on_outlined,
+                                            size: 18,
+                                            color: Color.fromARGB(255, 51, 155, 33),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            option,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                              color: Color(0xFF1A1A2E),
+                                            ),
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.north_west,
+                                          size: 14,
+                                          color: Colors.grey.shade400,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
                   },
                   fieldViewBuilder:
                       (
@@ -1083,6 +1170,85 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   setState(() {
                     _destinationLocationName = selection;
                   });
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 6,
+                      shadowColor: Colors.black.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.white,
+                      child: Container(
+                        width: constraints.maxWidth,
+                        constraints: const BoxConstraints(maxHeight: 260),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade100),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            separatorBuilder: (_, __) => Divider(
+                              height: 1,
+                              indent: 56,
+                              endIndent: 16,
+                              color: Colors.grey.shade100,
+                            ),
+                            itemBuilder: (context, index) {
+                              final option = options.elementAt(index);
+                              return InkWell(
+                                onTap: () => onSelected(option),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.redAccent.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: const Icon(
+                                          Icons.location_on_outlined,
+                                          size: 18,
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          option,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF1A1A2E),
+                                          ),
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.north_west,
+                                        size: 14,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
                 },
                 fieldViewBuilder:
                     (
@@ -1166,7 +1332,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                 Switch(
                   value: _includeRestaurants,
                   onChanged: (val) => setState(() => _includeRestaurants = val),
-                  activeColor: const Color(0xFF00D26A),
+                  activeColor: const Color.fromARGB(255, 51, 155, 33),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ],
@@ -1198,12 +1364,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: _useCurrentTime
-                          ? const Color(0xFF00D26A).withValues(alpha: 0.1)
+                          ? const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.1)
                           : const Color(0xFFF8F9FE),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: _useCurrentTime
-                            ? const Color(0xFF00D26A)
+                            ? const Color.fromARGB(255, 51, 155, 33)
                             : Colors.transparent,
                         width: 1.5,
                       ),
@@ -1215,7 +1381,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                           Icons.schedule,
                           size: 18,
                           color: _useCurrentTime
-                              ? const Color(0xFF00D26A)
+                              ? const Color.fromARGB(255, 51, 155, 33)
                               : Colors.grey,
                         ),
                         const SizedBox(width: 8),
@@ -1226,7 +1392,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                 ? FontWeight.bold
                                 : FontWeight.normal,
                             color: _useCurrentTime
-                                ? const Color(0xFF00D26A)
+                                ? const Color.fromARGB(255, 51, 155, 33)
                                 : Colors.black87,
                           ),
                         ),
@@ -1300,15 +1466,15 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       child: ElevatedButton(
         onPressed: _isPlanning ? null : _planTrip,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF00D26A),
+          backgroundColor: const Color.fromARGB(255, 51, 155, 33),
           foregroundColor: Colors.white,
-          disabledBackgroundColor: const Color(0xFF00D26A).withValues(alpha: 0.7),
+          disabledBackgroundColor: const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.7),
           disabledForegroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 5,
-          shadowColor: const Color(0xFF00D26A).withValues(alpha: 0.4),
+          shadowColor: const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.4),
         ),
         child: _isPlanning
             ? const Row(
@@ -1358,13 +1524,14 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
         }
 
         final trips = snapshot.data!;
+        final displayTrips = trips.length > 3 ? trips.sublist(0, 3) : trips;
         return ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: trips.length,
+          itemCount: displayTrips.length,
           separatorBuilder: (context, index) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
-            final trip = trips[index];
+            final trip = displayTrips[index];
             final dateStr = trip.timestamp.toString().split(' ')[0];
 
             return Dismissible(
@@ -1429,10 +1596,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.map, color: Colors.blue),
+                    child: const Icon(Icons.route_rounded, color: Color.fromARGB(255, 51, 155, 33)),
                   ),
                   title: Text(
                     '${trip.startLocation} → ${trip.destination}',
@@ -1450,7 +1617,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   trailing: const Icon(
                     Icons.arrow_forward_ios,
                     size: 16,
-                    color: Colors.grey,
+                    color: Color.fromARGB(255, 51, 155, 33),
                   ),
                   onTap: () => _loadTrip(trip),
                 ),
