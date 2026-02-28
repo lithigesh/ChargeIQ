@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'services/fcm_service.dart'; // FCM push notifications
 import 'screens/sign_in_page.dart';
 import 'screens/main_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -123,6 +124,9 @@ class _InitializationScreenState extends State<InitializationScreen> {
           const Duration(milliseconds: 1500),
         ), // Minimum splash time
       ]);
+
+      // Initialize Firebase Cloud Messaging AFTER Firebase is ready
+      await FCMService.initialize();
 
       if (mounted) {
         setState(() {
