@@ -101,7 +101,7 @@ class _StationsListScreenState extends State<StationsListScreen>
 
   void _onListScroll() {
     if (!_listScrollController.hasClients) return;
-    final next = _listScrollController.offset > 420;
+    final next = _listScrollController.offset > 700;
     if (next != _showBackToTop && mounted) {
       setState(() => _showBackToTop = next);
     }
@@ -1641,7 +1641,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                     ),
                     child: Center(
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             driveDuration == 'Calculating...'
@@ -1651,15 +1651,17 @@ class _StationsListScreenState extends State<StationsListScreen>
                             color: _primaryBlue,
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            driveLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: _primaryBlue,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11.5,
+                          Flexible(
+                            child: Text(
+                              driveLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: _primaryBlue,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11.5,
+                              ),
                             ),
                           ),
                         ],
@@ -1680,7 +1682,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                     ),
                     child: Center(
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             chargingTypeIcon,
@@ -1688,15 +1690,17 @@ class _StationsListScreenState extends State<StationsListScreen>
                             color: const Color(0xFF2E7D32),
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            chargingType,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xFF2E7D32),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11.5,
+                          Flexible(
+                            child: Text(
+                              chargingType,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Color(0xFF2E7D32),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11.5,
+                              ),
                             ),
                           ),
                         ],
