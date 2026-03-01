@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../utils/app_snackbar.dart';
 import 'main_screen.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -23,45 +24,6 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  void _showStyledSnackBar({
-    required String message,
-    required Color backgroundColor,
-    required IconData icon,
-    Duration duration = const Duration(seconds: 2),
-  }) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          elevation: 8,
-          backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          duration: duration,
-          content: Row(
-            children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-  }
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -74,10 +36,9 @@ class _SignUpPageState extends State<SignUpPage> {
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_termsAccepted) {
-      _showStyledSnackBar(
-        message: 'Please accept the Terms of Service and Privacy Policy',
-        backgroundColor: Colors.red,
-        icon: Icons.error_rounded,
+      AppSnackBar.error(
+        context,
+        'Please accept the Terms of Service and Privacy Policy',
       );
       return;
     }
@@ -91,12 +52,7 @@ class _SignUpPageState extends State<SignUpPage> {
         fullName: _nameController.text.trim(),
       );
       if (mounted) {
-        _showStyledSnackBar(
-          message: 'Account created successfully!',
-          backgroundColor: Colors.green,
-          icon: Icons.check_circle_rounded,
-          duration: const Duration(seconds: 2),
-        );
+        AppSnackBar.success(context, 'Account created successfully!');
         // Use forced navigation as well for consistency
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted && _authService.currentUser != null) {
@@ -110,11 +66,7 @@ class _SignUpPageState extends State<SignUpPage> {
       }
     } catch (e) {
       if (mounted) {
-        _showStyledSnackBar(
-          message: e.toString(),
-          backgroundColor: Colors.red,
-          icon: Icons.error_rounded,
-        );
+        AppSnackBar.error(context, e.toString());
         setState(() => _isLoading = false);
       }
     }
@@ -129,14 +81,11 @@ class _SignUpPageState extends State<SignUpPage> {
       if (mounted) {
         final isNewUser = credential?.additionalUserInfo?.isNewUser ?? false;
 
-        _showStyledSnackBar(
-          message: isNewUser
+        AppSnackBar.success(
+          context,
+          isNewUser
               ? 'Account created successfully!'
               : 'Account already exists. Logging you in...',
-          backgroundColor: isNewUser ? Colors.green : Colors.blue,
-          icon:
-              isNewUser ? Icons.check_circle_rounded : Icons.info_rounded,
-          duration: const Duration(seconds: 2),
         );
 
         // Safety check and forced navigation
@@ -153,11 +102,7 @@ class _SignUpPageState extends State<SignUpPage> {
       }
     } catch (e) {
       if (mounted) {
-        _showStyledSnackBar(
-          message: e.toString(),
-          backgroundColor: Colors.red,
-          icon: Icons.error_rounded,
-        );
+        AppSnackBar.error(context, e.toString());
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

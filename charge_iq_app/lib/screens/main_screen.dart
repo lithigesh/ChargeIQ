@@ -72,10 +72,7 @@ class _MainScreenState extends State<MainScreen> {
                   const SizedBox(height: 16),
                   const Text(
                     'Quick Charge Settings',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -116,8 +113,7 @@ class _MainScreenState extends State<MainScreen> {
                           setState(() {
                             mapState.useAIForQuickCharge = val;
                           });
-                          final prefs =
-                              await SharedPreferences.getInstance();
+                          final prefs = await SharedPreferences.getInstance();
                           await prefs.setBool('quick_charge_use_ai', val);
                         },
                         activeColor: const Color(0xFF00D26A),
@@ -330,14 +326,19 @@ class _NavItem extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: selected
-                    ? const Color(0xFF00D26A).withValues(alpha: 0.1)
+                    ? const Color.fromARGB(
+                        255,
+                        51,
+                        155,
+                        33,
+                      ).withValues(alpha: 0.1)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
                 selected ? activeIcon : icon,
                 color: selected
-                    ? const Color(0xFF00D26A)
+                    ? const Color.fromARGB(255, 51, 155, 33)
                     : Colors.grey.shade500,
                 size: 24,
               ),
@@ -349,7 +350,7 @@ class _NavItem extends StatelessWidget {
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: selected
-                    ? const Color(0xFF00D26A)
+                    ? const Color.fromARGB(255, 51, 155, 33)
                     : Colors.grey.shade500,
                 fontFamily: 'Roboto', // Keep consistent with theme
               ),

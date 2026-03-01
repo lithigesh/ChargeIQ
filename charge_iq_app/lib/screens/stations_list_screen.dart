@@ -10,6 +10,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:charge_iq_app/screens/google_nav_screen.dart';
 import '../models/vehicle.dart';
 import '../services/vehicle_service.dart';
+import '../utils/app_snackbar.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FIXES:
@@ -186,12 +187,9 @@ class _StationsListScreenState extends State<StationsListScreen>
         status = await Permission.location.request();
         if (!status.isGranted) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Location permission is required to find stations',
-                ),
-              ),
+            AppSnackBar.warning(
+              context,
+              'Location permission is required to find stations',
             );
           }
           return;
@@ -216,9 +214,7 @@ class _StationsListScreenState extends State<StationsListScreen>
     } catch (e) {
       debugPrint('Error getting location: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error getting your location')),
-        );
+        AppSnackBar.error(context, 'Error getting your location');
       }
     }
   }
@@ -514,9 +510,7 @@ class _StationsListScreenState extends State<StationsListScreen>
       debugPrint('Error loading stations: $e');
       if (mounted) {
         setState(() => isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Error loading stations')));
+        AppSnackBar.error(context, 'Error loading stations');
       }
     }
   }

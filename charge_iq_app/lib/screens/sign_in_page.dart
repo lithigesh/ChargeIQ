@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../utils/app_snackbar.dart';
 import 'sign_up_page.dart';
 
 import 'main_screen.dart';
@@ -19,45 +20,6 @@ class _SignInPageState extends State<SignInPage>
   final _authService = AuthService();
   bool _isLoading = false;
   bool _obscurePassword = true;
-
-  void _showStyledSnackBar({
-    required String message,
-    required Color backgroundColor,
-    required IconData icon,
-    Duration duration = const Duration(seconds: 2),
-  }) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          elevation: 8,
-          backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          duration: duration,
-          content: Row(
-            children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-  }
 
   @override
   void initState() {
@@ -82,10 +44,9 @@ class _SignInPageState extends State<SignInPage>
         _passwordController.text,
       );
 
-      _showStyledSnackBar(
-        message: 'Signed in successfully!',
-        backgroundColor: Colors.green,
-        icon: Icons.check_circle_rounded,
+      AppSnackBar.success(
+        context,
+        'Signed in successfully!',
         duration: const Duration(seconds: 1),
       );
 
@@ -102,11 +63,7 @@ class _SignInPageState extends State<SignInPage>
         }
       }
     } catch (e) {
-      _showStyledSnackBar(
-        message: e.toString(),
-        backgroundColor: Colors.red,
-        icon: Icons.error_rounded,
-      );
+      AppSnackBar.error(context, e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -118,10 +75,9 @@ class _SignInPageState extends State<SignInPage>
     try {
       final cred = await _authService.signInWithGoogle();
 
-      _showStyledSnackBar(
-        message: 'Signed in successfully!',
-        backgroundColor: Colors.green,
-        icon: Icons.check_circle_rounded,
+      AppSnackBar.success(
+        context,
+        'Signed in successfully!',
         duration: const Duration(seconds: 1),
       );
 
@@ -138,11 +94,7 @@ class _SignInPageState extends State<SignInPage>
         }
       }
     } catch (e) {
-      _showStyledSnackBar(
-        message: e.toString(),
-        backgroundColor: Colors.red,
-        icon: Icons.error_rounded,
-      );
+      AppSnackBar.error(context, e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -323,16 +275,12 @@ class _SignInPageState extends State<SignInPage>
                                                       );
                                                   if (context.mounted) {
                                                     Navigator.pop(context);
-                                                    _showStyledSnackBar(
-                                                      message:
-                                                          'Password reset email sent! Check your inbox.',
-                                                      backgroundColor:
-                                                          Colors.green,
-                                                      icon: Icons.mark_email_read_rounded,
-                                                      duration:
-                                                          const Duration(
-                                                            seconds: 4,
-                                                          ),
+                                                    AppSnackBar.success(
+                                                      context,
+                                                      'Password reset email sent! Check your inbox.',
+                                                      duration: const Duration(
+                                                        seconds: 4,
+                                                      ),
                                                     );
                                                   }
                                                 } catch (e) {
@@ -340,12 +288,9 @@ class _SignInPageState extends State<SignInPage>
                                                     setState(
                                                       () => isLoading = false,
                                                     );
-                                                    _showStyledSnackBar(
-                                                      message: e.toString(),
-                                                      backgroundColor:
-                                                          Colors.red,
-                                                      icon:
-                                                          Icons.error_rounded,
+                                                    AppSnackBar.error(
+                                                      context,
+                                                      e.toString(),
                                                     );
                                                   }
                                                 }

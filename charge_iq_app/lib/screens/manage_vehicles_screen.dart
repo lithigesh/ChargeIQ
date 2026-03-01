@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/vehicle.dart';
 import '../services/vehicle_service.dart';
+import '../utils/app_snackbar.dart';
 
 class ManageVehiclesScreen extends StatefulWidget {
   const ManageVehiclesScreen({super.key});
@@ -418,21 +419,14 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
     try {
       await _vehicleService.setDefaultVehicleId(vehicle.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${vehicle.brand} ${vehicle.model} set as default'),
-            backgroundColor: const Color(0xFF10B981),
-          ),
+        AppSnackBar.success(
+          context,
+          '${vehicle.brand} ${vehicle.model} set as default',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to set default: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        AppSnackBar.error(context, 'Failed to set default: $e');
       }
     }
   }
@@ -465,21 +459,12 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
               try {
                 await _vehicleService.deleteVehicle(vehicle.id);
                 if (mounted) {
-                  scaffoldMessenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Vehicle deleted'),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
+                  scaffoldMessenger.clearSnackBars();
+                  AppSnackBar.info(context, 'Vehicle deleted');
                 }
               } catch (e) {
                 if (mounted) {
-                  scaffoldMessenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to delete: $e'),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
+                  AppSnackBar.error(context, 'Failed to delete: $e');
                 }
               }
             },
@@ -829,22 +814,15 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEditing ? 'Vehicle updated!' : 'Vehicle added!'),
-            backgroundColor: const Color(0xFF10B981),
-          ),
+        AppSnackBar.success(
+          context,
+          _isEditing ? 'Vehicle updated!' : 'Vehicle added!',
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        AppSnackBar.error(context, 'Error: $e');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

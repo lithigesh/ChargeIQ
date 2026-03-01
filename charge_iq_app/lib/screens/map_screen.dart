@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' show cos, sqrt, asin;
 import 'package:charge_iq_app/screens/google_nav_screen.dart';
 import 'package:charge_iq_app/services/gemini_service.dart';
+import '../utils/app_snackbar.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -94,11 +95,7 @@ class MapScreenState extends State<MapScreen> {
       const Color(0xFF10B981),
       Colors.white,
     );
-    customLocationIcon = await _createCustomMarkerBitmap(
-      '📍',
-      const Color(0xFF3B82F6),
-      Colors.white,
-    );
+    customLocationIcon = await _createCurrentLocationPin();
   }
 
   Future<BitmapDescriptor> _createCustomMarkerBitmap(
@@ -138,6 +135,38 @@ class MapScreenState extends State<MapScreen> {
     textPainter.text = TextSpan(
       text: emoji,
       style: const TextStyle(fontSize: 60.0),
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset((size - textPainter.width) / 2, (size - textPainter.height) / 2),
+    );
+
+    final img = await pictureRecorder.endRecording().toImage(
+      size.toInt(),
+      size.toInt(),
+    );
+    final data = await img.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
+  }
+
+  /// Creates a simple location pin using the Material location_pin icon
+  Future<BitmapDescriptor> _createCurrentLocationPin() async {
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    const double size = 120.0;
+
+    // Paint the location_pin icon
+    final iconData = Icons.location_pin;
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: 110,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        color: const Color(0xFF4285F4),
+      ),
     );
     textPainter.layout();
     textPainter.paint(
@@ -253,7 +282,7 @@ class MapScreenState extends State<MapScreen> {
       await loadNearbyStations();
     } catch (e) {
       debugPrint('Error getting location: $e');
-      _showSnackBar('Unable to get your location', isError: true);
+      AppSnackBar.error(context, 'Unable to get your location');
     }
   }
 
@@ -392,7 +421,7 @@ class MapScreenState extends State<MapScreen> {
   // Load stations within 30km of user location
   Future<void> loadNearbyStations() async {
     if (currentLocation == null) {
-      _showSnackBar('Getting your location first...', isError: true);
+      AppSnackBar.error(context, 'Getting your location first...');
       return;
     }
 
@@ -491,11 +520,14 @@ class MapScreenState extends State<MapScreen> {
         debugPrint(
           '✅ Found ${stationData.length} stations within ${SEARCH_RADIUS_KM}km',
         );
-        _showSnackBar('Found ${stationData.length} charging stations nearby');
+        AppSnackBar.success(
+          context,
+          'Found ${stationData.length} charging stations nearby',
+        );
       }
     } catch (e) {
       debugPrint('Error loading stations: $e');
-      _showSnackBar('Unable to load stations', isError: true);
+      AppSnackBar.error(context, 'Unable to load stations');
     } finally {
       if (mounted) {
         setState(() {
@@ -510,10 +542,10 @@ class MapScreenState extends State<MapScreen> {
   Future<void> quickCharge() async {
     // Step 1: Ensure we have current location
     if (currentLocation == null) {
-      _showSnackBar('Getting your location...', isError: false);
+      AppSnackBar.info(context, 'Getting your location...');
       await getCurrentLocation();
       if (currentLocation == null) {
-        _showSnackBar('Unable to get your location', isError: true);
+        AppSnackBar.error(context, 'Unable to get your location');
         return;
       }
     }
@@ -595,7 +627,7 @@ class MapScreenState extends State<MapScreen> {
 
       // Step 3: Handle results - Logic for "Best" Station
       if (nearbyStations.isEmpty) {
-        _showSnackBar('No charging stations found within 30km', isError: true);
+        AppSnackBar.warning(context, 'No charging stations found within 30km');
         setState(() {
           isLoadingStations = false;
         });
@@ -722,7 +754,7 @@ class MapScreenState extends State<MapScreen> {
       mapController?.animateCamera(CameraUpdate.newLatLngZoom(bestPos, 15));
     } catch (e) {
       debugPrint('Quick Charge error: $e');
-      _showSnackBar('Unable to find charging stations', isError: true);
+      AppSnackBar.error(context, 'Unable to find charging stations');
     } finally {
       if (mounted) {
         setState(() {
@@ -740,7 +772,11 @@ class MapScreenState extends State<MapScreen> {
       markers.removeWhere((m) => m.markerId.value.startsWith('ChIJ'));
 
       for (var station in stations) {
-        final markerId = (station['id'] ?? station['placeId'] ?? '${station['lat']}_${station['lng']}').toString();
+        final markerId =
+            (station['id'] ??
+                    station['placeId'] ??
+                    '${station['lat']}_${station['lng']}')
+                .toString();
         markers.add(
           Marker(
             markerId: MarkerId(markerId),
@@ -1158,7 +1194,7 @@ class MapScreenState extends State<MapScreen> {
   // Get turn-by-turn directions
   Future<void> _getDirections(Map<String, dynamic> station) async {
     if (currentLocation == null) {
-      _showSnackBar('Current location not available', isError: true);
+      AppSnackBar.error(context, 'Current location not available');
       return;
     }
 
@@ -1209,12 +1245,12 @@ class MapScreenState extends State<MapScreen> {
           final duration = legs['duration']['text'];
           final distance = legs['distance']['text'];
 
-          _showSnackBar('$distance • $duration');
+          AppSnackBar.success(context, '$distance • $duration');
         }
       }
     } catch (e) {
       debugPrint('Error getting directions: $e');
-      _showSnackBar('Unable to get directions', isError: true);
+      AppSnackBar.error(context, 'Unable to get directions');
     } finally {
       setState(() {
         isLoadingDirections = false;
@@ -1272,33 +1308,6 @@ class MapScreenState extends State<MapScreen> {
     );
 
     mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
-  }
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline : Icons.check_circle_outline,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(message, style: const TextStyle(fontSize: 14)),
-            ),
-          ],
-        ),
-        backgroundColor: isError ? Colors.red[700] : Colors.green[700],
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   // === Trip Route Integration ===
@@ -1361,7 +1370,7 @@ class MapScreenState extends State<MapScreen> {
       final destLatLng = await _geocodeAddress(destination);
 
       if (startLatLng == null || destLatLng == null) {
-        _showSnackBar('Could not locate start or destination', isError: true);
+        AppSnackBar.error(context, 'Could not locate start or destination');
         setState(() {
           isLoadingDirections = false;
           _showingTripRoute = false;
@@ -1534,7 +1543,7 @@ class MapScreenState extends State<MapScreen> {
             );
           }
         } else {
-          _showSnackBar('No route found', isError: true);
+          AppSnackBar.error(context, 'No route found');
           setState(() {
             isLoadingDirections = false;
             _showingTripRoute = false;
@@ -1543,7 +1552,7 @@ class MapScreenState extends State<MapScreen> {
       }
     } catch (e) {
       debugPrint('Trip route error: $e');
-      _showSnackBar('Failed to load route', isError: true);
+      AppSnackBar.error(context, 'Failed to load route');
       setState(() {
         isLoadingDirections = false;
         _showingTripRoute = false;
@@ -1859,12 +1868,14 @@ class MapScreenState extends State<MapScreen> {
   // Search functionality
   void _onSearchChanged() {
     final query = searchController.text.toLowerCase();
-    
+
     // Determine the new search results based on the query
-    final results = query.isEmpty ? <Map<String, dynamic>>[] : _filterStations(query);
+    final results = query.isEmpty
+        ? <Map<String, dynamic>>[]
+        : _filterStations(query);
     final showResults = results.isNotEmpty;
-    
-    // Only rebuild the widget tree if there's a difference in whether we are 
+
+    // Only rebuild the widget tree if there's a difference in whether we are
     // showing the overlay, OR if the overlay is ACTIVELY being shown.
     if (_showSearchResults != showResults || _showSearchResults) {
       setState(() {
@@ -1980,7 +1991,7 @@ class MapScreenState extends State<MapScreen> {
                       ),
                     ),
                   ),
-                  
+
                   // Search Results List (Only shown when searching)
                   if (_showSearchResults) ...[
                     const Divider(height: 1, thickness: 1),
@@ -2223,7 +2234,6 @@ class MapScreenState extends State<MapScreen> {
             _buildTripRouteTopBar(),
             _buildTripRoutePanel(),
           ],
-
         ],
       ),
     );

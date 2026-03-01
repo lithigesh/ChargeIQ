@@ -7,6 +7,7 @@ import '../services/places_service.dart';
 import '../services/trip_service.dart';
 import '../services/vehicle_service.dart';
 import '../models/trip_plan.dart';
+import '../utils/app_snackbar.dart';
 import 'trip_result_screen.dart';
 import 'all_trips_screen.dart';
 
@@ -120,64 +121,21 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     return null;
   }
 
-  void _showTripSnackBar(
-    String message, {
-    Color bgColor = const Color(0xFF323232),
-    IconData icon = Icons.info_outline,
-    Color iconColor = Colors.white,
-    Duration duration = const Duration(seconds: 3),
-  }) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        backgroundColor: bgColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        duration: duration,
-        content: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: iconColor, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _planTrip() async {
     if (_isPlanning) return;
     if (_selectedVehicles.isEmpty) {
-      _showTripSnackBar(
+      AppSnackBar.error(
+        context,
         'Please select at least one vehicle',
-        bgColor: const Color(0xFFE53935),
         icon: Icons.directions_car_outlined,
       );
       return;
     }
 
     if (_destinationLocationName == null || _destinationLocationName!.isEmpty) {
-      _showTripSnackBar(
+      AppSnackBar.error(
+        context,
         'Please select a destination',
-        bgColor: const Color(0xFFE53935),
         icon: Icons.location_off_outlined,
       );
       return;
@@ -185,9 +143,9 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
 
     if (!_useCurrentLocation &&
         (_startLocationName == null || _startLocationName!.isEmpty)) {
-      _showTripSnackBar(
+      AppSnackBar.error(
+        context,
         'Please select a starting point',
-        bgColor: const Color(0xFFE53935),
         icon: Icons.my_location,
       );
       return;
@@ -203,9 +161,9 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
 
     if (_destinationLocationName != null &&
         !isIndiaLocation(_destinationLocationName!)) {
-      _showTripSnackBar(
+      AppSnackBar.warning(
+        context,
         'Service is currently available only within India',
-        bgColor: const Color(0xFFF57C00),
         icon: Icons.public_off_outlined,
       );
       return;
@@ -214,9 +172,9 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     if (!_useCurrentLocation &&
         _startLocationName != null &&
         !isIndiaLocation(_startLocationName!)) {
-      _showTripSnackBar(
+      AppSnackBar.warning(
+        context,
         'Starting point must be within India',
-        bgColor: const Color(0xFFF57C00),
         icon: Icons.public_off_outlined,
       );
       return;
@@ -641,9 +599,9 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     if (_allVehicles.isEmpty) {
       return GestureDetector(
         onTap: () {
-          _showTripSnackBar(
+          AppSnackBar.info(
+            context,
             'Add vehicles from Profile → My Vehicles',
-            bgColor: const Color(0xFF1565C0),
             icon: Icons.directions_car_outlined,
           );
         },
@@ -1556,9 +1514,9 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               },
               onDismissed: (direction) {
                 _tripService.deleteTrip(trip.id);
-                _showTripSnackBar(
+                AppSnackBar.error(
+                  context,
                   'Trip plan deleted',
-                  bgColor: const Color(0xFFB71C1C),
                   icon: Icons.delete_outline,
                   duration: const Duration(seconds: 4),
                 );

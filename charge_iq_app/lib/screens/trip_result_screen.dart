@@ -7,6 +7,7 @@ import '../services/gemini_service.dart';
 import '../services/trip_service.dart';
 import '../services/directions_service.dart';
 import '../services/vehicle_service.dart';
+import '../utils/app_snackbar.dart';
 import 'main_screen.dart';
 import 'navigation_screen.dart';
 
@@ -92,7 +93,7 @@ class _TripResultScreenState extends State<TripResultScreen>
 
   Future<void> _loadVehicle() async {
     if (widget.vehicleId.isEmpty) return;
-    
+
     try {
       final vehicle = await _vehicleService.getVehicle(widget.vehicleId);
       if (mounted && vehicle != null) {
@@ -115,7 +116,9 @@ class _TripResultScreenState extends State<TripResultScreen>
     String start = widget.startLocation;
 
     // Use coordinates if available for more accurate routing
-    if (widget.useCurrentLocation && widget.startLat != null && widget.startLng != null) {
+    if (widget.useCurrentLocation &&
+        widget.startLat != null &&
+        widget.startLng != null) {
       start = '${widget.startLat}, ${widget.startLng}';
     }
 
@@ -201,9 +204,7 @@ class _TripResultScreenState extends State<TripResultScreen>
         _isSaved = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to save trip: $e')));
+        AppSnackBar.error(context, 'Failed to save trip: $e');
       }
     }
   }
@@ -237,9 +238,7 @@ class _TripResultScreenState extends State<TripResultScreen>
       if (widget.tripId != null) {
         await _tripService.deleteTrip(widget.tripId!);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Trip deleted successfully')),
-          );
+          AppSnackBar.success(context, 'Trip deleted successfully');
           Navigator.of(context).pop();
         }
       } else {
@@ -248,16 +247,12 @@ class _TripResultScreenState extends State<TripResultScreen>
           _isSaved = false;
         });
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Trip unsaved')));
+          AppSnackBar.info(context, 'Trip unsaved');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
+        AppSnackBar.error(context, 'Failed to delete: $e');
       }
     }
   }
@@ -429,8 +424,9 @@ class _TripResultScreenState extends State<TripResultScreen>
               Expanded(
                 child: _buildStatChip(
                   Icons.timer,
-                  _cleanText(_realTimeDuration ??
-                      plan['total_duration'] ?? 'N/A'),
+                  _cleanText(
+                    _realTimeDuration ?? plan['total_duration'] ?? 'N/A',
+                  ),
                 ),
               ),
             ],
@@ -487,7 +483,7 @@ class _TripResultScreenState extends State<TripResultScreen>
 
   IconData _getVehicleIcon() {
     if (_tripVehicle == null) return Icons.directions_car;
-    
+
     switch (_tripVehicle!.vehicleType) {
       case '2 Wheeler':
         return Icons.two_wheeler;
@@ -502,7 +498,7 @@ class _TripResultScreenState extends State<TripResultScreen>
 
   Widget _buildVehicleCard() {
     if (_tripVehicle == null) return const SizedBox.shrink();
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -555,7 +551,8 @@ class _TripResultScreenState extends State<TripResultScreen>
                           color: Colors.black87,
                         ),
                       ),
-                      if (_tripVehicle!.variant.isNotEmpty && !_isVehicleExpanded)
+                      if (_tripVehicle!.variant.isNotEmpty &&
+                          !_isVehicleExpanded)
                         Text(
                           _tripVehicle!.variant,
                           style: const TextStyle(
@@ -589,7 +586,11 @@ class _TripResultScreenState extends State<TripResultScreen>
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
                         children: [
-                          const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                          const Icon(
+                            Icons.info_outline,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             _tripVehicle!.variant,
@@ -781,7 +782,10 @@ class _TripResultScreenState extends State<TripResultScreen>
     // Replace 'hours' and 'hour' with 'hr'
     clean = clean.replaceAll(RegExp(r'\bhours?\b', caseSensitive: false), 'hr');
     // Replace 'minutes' and 'minute' with 'min'
-    clean = clean.replaceAll(RegExp(r'\bminutes?\b', caseSensitive: false), 'min');
+    clean = clean.replaceAll(
+      RegExp(r'\bminutes?\b', caseSensitive: false),
+      'min',
+    );
     return clean;
   }
 

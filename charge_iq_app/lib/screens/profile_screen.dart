@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/vehicle.dart';
 import '../services/auth_service.dart';
 import '../services/vehicle_service.dart';
+import '../utils/app_snackbar.dart';
 import 'sign_in_page.dart';
 import 'manage_vehicles_screen.dart';
 
@@ -52,9 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error signing out: $e')));
+        AppSnackBar.error(context, 'Error signing out: $e');
       }
     }
   }
@@ -343,42 +342,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               final ctx = context;
                               if (ctx.mounted) {
                                 ScaffoldMessenger.of(ctx).clearSnackBars();
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                  SnackBar(
-                                    behavior: SnackBarBehavior.floating,
-                                    margin: const EdgeInsets.fromLTRB(
-                                        16, 0, 16, 16),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 12),
-                                    backgroundColor: val
-                                        ? const Color(0xFF1565C0)
-                                        : const Color(0xFF546E7A),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    duration: const Duration(seconds: 2),
-                                    content: Row(
-                                      children: [
-                                        Icon(
-                                          val
-                                              ? Icons.psychology_outlined
-                                              : Icons.calculate_outlined,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          val
-                                              ? 'AI station selection enabled'
-                                              : 'Scoring algorithm enabled',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                AppSnackBar.info(
+                                  ctx,
+                                  val
+                                      ? 'AI station selection enabled'
+                                      : 'Scoring algorithm enabled',
+                                  icon: val
+                                      ? Icons.psychology_outlined
+                                      : Icons.calculate_outlined,
                                 );
                               }
                             },
@@ -415,23 +386,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _user = _authService.currentUser;
                           });
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Google account linked successfully!',
-                                ),
-                                backgroundColor: Colors.green,
-                              ),
+                            AppSnackBar.success(
+                              context,
+                              'Google account linked successfully!',
                             );
                           }
                         } catch (e) {
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(e.toString()),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                            AppSnackBar.error(context, e.toString());
                           }
                         }
                       },
