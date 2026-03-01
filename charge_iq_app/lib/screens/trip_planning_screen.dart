@@ -317,248 +317,194 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   void _showVehicleSelector() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        Vehicle? sheetSelected = _selectedVehicles.isNotEmpty ? _selectedVehicles.first : null;
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return DraggableScrollableSheet(
-              initialChildSize: 0.55,
-              maxChildSize: 0.85,
-              minChildSize: 0.35,
-              expand: false,
-              builder: (context, scrollController) {
-                return Column(
-                  children: [
-                    // Handle
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12, bottom: 8),
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+      builder: (ctx) {
+        return Container(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 4),
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDDE3EE),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Header row
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+                child: const Text(
+                  'Select Vehicle',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFF0F4FB)),
+              // Vehicle list
+              if (_allVehicles.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.directions_car_outlined,
+                        size: 40,
+                        color: Colors.grey[400],
                       ),
-                    ),
-                    // Title
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
+                      const SizedBox(height: 10),
+                      Text(
+                        'No vehicles added yet',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Add vehicles from your profile',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ..._allVehicles.map((vehicle) {
+                  final isSel =
+                      _selectedVehicles.isNotEmpty &&
+                      _selectedVehicles.first.id == vehicle.id;
+
+                  IconData vehicleIcon;
+                  switch (vehicle.vehicleType) {
+                    case '2 Wheeler':
+                      vehicleIcon = Icons.two_wheeler;
+                      break;
+                    case '3 Wheeler':
+                      vehicleIcon = Icons.electric_rickshaw;
+                      break;
+                    case 'Bus':
+                      vehicleIcon = Icons.directions_bus;
+                      break;
+                    default:
+                      vehicleIcon = Icons.directions_car;
+                  }
+
+                  return InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedVehicles = [vehicle];
+                      });
+                      Navigator.pop(ctx);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 20,
-                        vertical: 8,
+                        vertical: 10,
                       ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Select Vehicle',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                      child: Row(
+                        children: [
+                          // Vehicle icon
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isSel
+                                  ? const Color(0xFF1A1A2E)
+                                  : const Color(0xFFF0F4FB),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              vehicleIcon,
+                              color: isSel
+                                  ? Colors.white
+                                  : const Color(0xFF1565C0),
+                              size: 16,
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    // Vehicle list
-                    Expanded(
-                      child: _allVehicles.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.directions_car_outlined,
-                                    size: 48,
-                                    color: Colors.grey[400],
+                          const SizedBox(width: 12),
+                          // Name & port
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${vehicle.brand} ${vehicle.model}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    color: Color(0xFF1A1A2E),
                                   ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'No vehicles added yet',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey[600],
-                                    ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  vehicle.chargingPortType,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF90A4AE),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Add vehicles from your profile',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[400],
-                                    ),
-                                  ),
-                                ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Range pill
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF1565C0,
+                              ).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${vehicle.maxRange.toStringAsFixed(0)} km',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1565C0),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Check indicator
+                          if (isSel)
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF00C853,
+                                ).withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.check_rounded,
+                                color: Color(0xFF00C853),
+                                size: 14,
                               ),
                             )
-                          : ListView.builder(
-                              controller: scrollController,
-                              padding: const EdgeInsets.all(16),
-                              itemCount: _allVehicles.length,
-                              itemBuilder: (context, index) {
-                                final vehicle = _allVehicles[index];
-                                final isSelected = sheetSelected != null &&
-                                    sheetSelected!.id == vehicle.id;
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: _buildVehicleSelectorCard(
-                                    vehicle,
-                                    isSelected,
-                                    () {
-                                      setSheetState(() {
-                                        sheetSelected = vehicle;
-                                      });
-                                      setState(() {
-                                        _selectedVehicles = [vehicle];
-                                      });
-                                      Future.delayed(const Duration(milliseconds: 350), () {
-                                        if (mounted) Navigator.pop(context);
-                                      });
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
+                          else
+                            const SizedBox(width: 22),
+                        ],
+                      ),
                     ),
-                  ],
-                );
-              },
-            );
-          },
+                  );
+                }),
+              const SizedBox(height: 8),
+            ],
+          ),
         );
       },
-    );
-  }
-
-  Widget _buildVehicleSelectorCard(
-    Vehicle vehicle,
-    bool isSelected,
-    VoidCallback onTap,
-  ) {
-    IconData vehicleIcon;
-    switch (vehicle.vehicleType) {
-      case '2 Wheeler':
-        vehicleIcon = Icons.two_wheeler;
-        break;
-      case '3 Wheeler':
-        vehicleIcon = Icons.electric_rickshaw;
-        break;
-      case 'Bus':
-        vehicleIcon = Icons.directions_bus;
-        break;
-      default:
-        vehicleIcon = Icons.directions_car;
-    }
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? const Color.fromARGB(255, 51, 155, 33) : Colors.grey.shade200,
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color.fromARGB(255, 51, 155, 33)
-                    : const Color(0xFF263238),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(vehicleIcon, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${vehicle.brand} ${vehicle.model}',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    vehicle.variant.isNotEmpty
-                        ? vehicle.variant
-                        : vehicle.vehicleType,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-            // Range badge
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'Max Range',
-                  style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${vehicle.maxRange.toStringAsFixed(0)} km',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1565C0),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 10),
-            // Radio indicator
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected
-                      ? const Color.fromARGB(255, 51, 155, 33)
-                      : Colors.grey.shade400,
-                  width: 2,
-                ),
-              ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(
-                          color: Color.fromARGB(255, 51, 155, 33),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -586,7 +532,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     children: [
                       const Text(
                         'Recent Plans',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -796,14 +745,14 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
-            color: const Color(0xFF263238),
-            borderRadius: BorderRadius.circular(12),
+            color: const Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.circular(9),
           ),
-          child: Icon(vehicleIcon, color: Colors.white, size: 22),
+          child: Icon(vehicleIcon, color: Colors.white, size: 15),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -811,16 +760,16 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               Text(
                 '${vehicle.brand} ${vehicle.model}',
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
               Text(
-                vehicle.variant.isNotEmpty
-                    ? vehicle.variant
-                    : vehicle.vehicleType,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                vehicle.chargingPortType,
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
               ),
             ],
           ),
@@ -978,7 +927,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     if (selected) _startLocationName = null;
                   });
                 },
-                selectedColor: const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.2),
+                selectedColor: const Color.fromARGB(
+                  255,
+                  51,
+                  155,
+                  33,
+                ).withValues(alpha: 0.2),
                 labelStyle: TextStyle(
                   color: _useCurrentLocation
                       ? const Color.fromARGB(255, 51, 155, 33)
@@ -1074,13 +1028,25 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                         Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
-                                            color: const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(10),
+                                            color: const Color.fromARGB(
+                                              255,
+                                              51,
+                                              155,
+                                              33,
+                                            ).withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
                                           child: const Icon(
                                             Icons.location_on_outlined,
                                             size: 18,
-                                            color: Color.fromARGB(255, 51, 155, 33),
+                                            color: Color.fromARGB(
+                                              255,
+                                              51,
+                                              155,
+                                              33,
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 12),
@@ -1212,8 +1178,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                       Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: Colors.redAccent.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(10),
+                                          color: Colors.redAccent.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.location_on_outlined,
@@ -1320,10 +1290,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                       SizedBox(height: 2),
                       Text(
                         'Include meal stops along the route',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -1364,7 +1331,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: _useCurrentTime
-                          ? const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.1)
+                          ? const Color.fromARGB(
+                              255,
+                              51,
+                              155,
+                              33,
+                            ).withValues(alpha: 0.1)
                           : const Color(0xFFF8F9FE),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
@@ -1468,13 +1440,23 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color.fromARGB(255, 51, 155, 33),
           foregroundColor: Colors.white,
-          disabledBackgroundColor: const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.7),
+          disabledBackgroundColor: const Color.fromARGB(
+            255,
+            51,
+            155,
+            33,
+          ).withValues(alpha: 0.7),
           disabledForegroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 5,
-          shadowColor: const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.4),
+          shadowColor: const Color.fromARGB(
+            255,
+            51,
+            155,
+            33,
+          ).withValues(alpha: 0.4),
         ),
         child: _isPlanning
             ? const Row(
@@ -1596,10 +1578,18 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 51, 155, 33).withValues(alpha: 0.1),
+                      color: const Color.fromARGB(
+                        255,
+                        51,
+                        155,
+                        33,
+                      ).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.route_rounded, color: Color.fromARGB(255, 51, 155, 33)),
+                    child: const Icon(
+                      Icons.route_rounded,
+                      color: Color.fromARGB(255, 51, 155, 33),
+                    ),
                   ),
                   title: Text(
                     '${trip.startLocation} → ${trip.destination}',

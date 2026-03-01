@@ -673,6 +673,19 @@ class _StationsListScreenState extends State<StationsListScreen>
     return _driveDurationByPlaceId[placeId] ?? 'Calculating...';
   }
 
+  IconData _vehicleTypeIcon(String vehicleType) {
+    switch (vehicleType) {
+      case '2 Wheeler':
+        return Icons.two_wheeler;
+      case '3 Wheeler':
+        return Icons.electric_rickshaw;
+      case 'Bus':
+        return Icons.directions_bus;
+      default:
+        return Icons.directions_car;
+    }
+  }
+
   String _chargingTypeLabel(Map<String, dynamic> station) {
     final selectedType = selectedVehicle?.chargingPortType.trim();
     if (selectedType != null && selectedType.isNotEmpty) return selectedType;
@@ -708,62 +721,60 @@ class _StationsListScreenState extends State<StationsListScreen>
   Widget _buildLoadingScreen() {
     return Scaffold(
       backgroundColor: _softBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeaderGradient(scanning: true),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: _pulseAnimation,
-                    builder: (_, __) => Transform.scale(
-                      scale: _pulseAnimation.value,
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: _blue(0.08),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: _blue(0.2), width: 2),
-                        ),
-                        child: const Icon(
-                          Icons.ev_station_rounded,
-                          size: 30,
-                          color: _primaryBlue,
-                        ),
+      body: Column(
+        children: [
+          _buildHeaderGradient(scanning: true),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (_, __) => Transform.scale(
+                    scale: _pulseAnimation.value,
+                    child: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: _blue(0.08),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _blue(0.2), width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.ev_station_rounded,
+                        size: 30,
+                        color: _primaryBlue,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(_accentGreen),
-                      strokeWidth: 2.5,
-                    ),
+                ),
+                const SizedBox(height: 20),
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(_accentGreen),
+                    strokeWidth: 2.5,
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Scanning ${SEARCH_RADIUS_KM.toInt()} km for stations...',
-                    style: const TextStyle(
-                      color: Color(0xFF90A4AE),
-                      fontSize: 13,
-                    ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Scanning for stations...',
+                  style: const TextStyle(
+                    color: Color(0xFF90A4AE),
+                    fontSize: 13,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              child: Column(
-                children: List.generate(3, (i) => _buildShimmerCard(index: i)),
-              ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
+              children: List.generate(3, (i) => _buildShimmerCard(index: i)),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -847,40 +858,38 @@ class _StationsListScreenState extends State<StationsListScreen>
     if (isLoading) return _buildLoadingScreen();
     return Scaffold(
       backgroundColor: _softBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeaderGradient(scanning: false),
-            Expanded(
-              child: Stack(
-                children: [
-                  _buildList(),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 78),
-                      child: IgnorePointer(
-                        ignoring: !_showBackToTop,
-                        child: AnimatedSlide(
+      body: Column(
+        children: [
+          _buildHeaderGradient(scanning: false),
+          Expanded(
+            child: Stack(
+              children: [
+                _buildList(),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 78),
+                    child: IgnorePointer(
+                      ignoring: !_showBackToTop,
+                      child: AnimatedSlide(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        offset: _showBackToTop
+                            ? Offset.zero
+                            : const Offset(0, 1),
+                        child: AnimatedOpacity(
                           duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          offset: _showBackToTop
-                              ? Offset.zero
-                              : const Offset(0, 1),
-                          child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 220),
-                            opacity: _showBackToTop ? 1 : 0,
-                            child: _buildBackToTopButton(),
-                          ),
+                          opacity: _showBackToTop ? 1 : 0,
+                          child: _buildBackToTopButton(),
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -890,10 +899,10 @@ class _StationsListScreenState extends State<StationsListScreen>
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_darkBlue, _primaryBlue],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: Color(0xFF1565C0),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
       ),
       child: Column(
@@ -901,7 +910,12 @@ class _StationsListScreenState extends State<StationsListScreen>
         children: [
           // Location row
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              MediaQuery.of(context).padding.top + 14,
+              20,
+              0,
+            ),
             child: Row(
               children: [
                 const Icon(
@@ -953,30 +967,15 @@ class _StationsListScreenState extends State<StationsListScreen>
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
             child: Row(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Nearby Stations',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        scanning
-                            ? 'Fetching up to 60 stations...'
-                            : '${allStations.length} stations within ${SEARCH_RADIUS_KM.toInt()} km',
-                        style: const TextStyle(
-                          color: Color(0xFF90CAF9),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                const Expanded(
+                  child: Text(
+                    'Nearby Stations',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                    ),
                   ),
                 ),
                 if (!scanning) ...[
@@ -1079,8 +1078,8 @@ class _StationsListScreenState extends State<StationsListScreen>
                 color: const Color(0xFF1A1A2E),
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: const Icon(
-                Icons.electric_car_rounded,
+              child: Icon(
+                _vehicleTypeIcon(selectedVehicle?.vehicleType ?? 'Car'),
                 color: Colors.white,
                 size: 15,
               ),
@@ -1229,17 +1228,6 @@ class _StationsListScreenState extends State<StationsListScreen>
               const Color(0xFFE65100),
               selectedFilter == 'Top Rated',
             ),
-            if (selectedVehicle != null) ...[
-              const SizedBox(width: 8),
-              _chip(
-                'For My EV',
-                'Recommended',
-                _recommendedCount,
-                Icons.verified_rounded,
-                _primaryBlue,
-                selectedFilter == 'Recommended',
-              ),
-            ],
           ],
         ),
       ),
@@ -1516,7 +1504,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                                 fontSize: 12.5,
                                 color: Color(0xFF90A4AE),
                               ),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -1865,30 +1853,13 @@ class _StationsListScreenState extends State<StationsListScreen>
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color: _blue(0.08),
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: const Icon(
-                      Icons.electric_car_rounded,
-                      color: _primaryBlue,
-                      size: 16,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Select Vehicle',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: _textDark,
-                    ),
-                  ),
-                ],
+              child: const Text(
+                'Select Vehicle',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: _textDark,
+                ),
               ),
             ),
             const Divider(height: 1, color: Color(0xFFF0F4FB)),
@@ -1908,7 +1879,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    Icons.electric_car_rounded,
+                    _vehicleTypeIcon(vehicle.vehicleType),
                     color: isSel ? Colors.white : _primaryBlue,
                     size: 16,
                   ),
