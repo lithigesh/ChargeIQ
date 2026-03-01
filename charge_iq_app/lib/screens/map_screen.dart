@@ -749,6 +749,33 @@ class MapScreenState extends State<MapScreen> {
         'Price: $debugPrice) $selMethod',
       );
 
+      // Track Mins Saved (If AI picked a *different* station than the default closest one)
+      if (useAIForQuickCharge &&
+          bestStation['id'] != nearbyStations.first['id']) {
+        try {
+          // Calculate rudimentary time difference.
+          // Assume average city driving speed of 30 km/h (0.5 km/min).
+          // If the AI found a station that is further away but is "Open" or has better quality
+          // it might actually save time on *charging* rather than driving.
+          // For a simple metric, we can grant a flat 15 mins saved if it avoided a poorly rated/closed station.
+          // Or calculate realistically based on AI confidence.
+          // Let's grant 10 minutes saved per AI intervention for avoiding a bad default station.
+
+          int minsSavedThisTrip =
+              15; // Assume 15 mins saved by avoiding a closed/bad station
+
+          final prefs = await SharedPreferences.getInstance();
+          final current = prefs.getInt('stats_mins_saved') ?? 0;
+          await prefs.setInt('stats_mins_saved', current + minsSavedThisTrip);
+
+          debugPrint(
+            'AI saved an estimated $minsSavedThisTrip mins! Total: ${current + minsSavedThisTrip}',
+          );
+        } catch (e) {
+          debugPrint('Failed to save mins saved: $e');
+        }
+      }
+
       // Step 6: Show the best station details card
       _showStationDetails(bestStation);
 
@@ -1146,7 +1173,17 @@ class MapScreenState extends State<MapScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () {
+                    onPressed: () async {
+                      try {
+                        final prefs = await SharedPreferences.getInstance();
+                        final current =
+                            prefs.getInt('stats_stations_found') ?? 0;
+                        await prefs.setInt('stats_stations_found', current + 1);
+                      } catch (e) {
+                        debugPrint('Failed to save stations found: $e');
+                      }
+
+                      if (!mounted) return;
                       Navigator.pop(context);
                       Navigator.push(
                         context,
@@ -1883,12 +1920,9 @@ class MapScreenState extends State<MapScreen> {
       return;
     }
 
-    final stationResults = _filterStations(query.toLowerCase())
-        .map((station) => {
-              ...station,
-              '_resultType': 'station',
-            })
-        .toList();
+    final stationResults = _filterStations(
+      query.toLowerCase(),
+    ).map((station) => {...station, '_resultType': 'station'}).toList();
 
     // Show station matches immediately (no network wait).
     setState(() {
@@ -1910,12 +1944,9 @@ class MapScreenState extends State<MapScreen> {
 
     final stationResults =
         precomputedStationResults ??
-        _filterStations(query)
-            .map((station) => {
-                  ...station,
-                  '_resultType': 'station',
-                })
-            .toList();
+        _filterStations(
+          query,
+        ).map((station) => {...station, '_resultType': 'station'}).toList();
 
     List<Map<String, dynamic>> cityResults = [];
     if (rawQuery.length >= 1) {
@@ -1971,7 +2002,7 @@ class MapScreenState extends State<MapScreen> {
         final description = item['description']?.toString() ?? '';
         final mainText =
             item['structured_formatting']?['main_text']?.toString() ??
-                description.split(',').first;
+            description.split(',').first;
         final secondaryText =
             item['structured_formatting']?['secondary_text']?.toString() ?? '';
 
@@ -2289,10 +2320,15 @@ class MapScreenState extends State<MapScreen> {
                                         Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
-                                            color: (isCity
-                                                    ? const Color(0xFF4285F4)
-                                                    : const Color(0xFF10B981))
-                                                .withValues(alpha: 0.1),
+                                            color:
+                                                (isCity
+                                                        ? const Color(
+                                                            0xFF4285F4,
+                                                          )
+                                                        : const Color(
+                                                            0xFF10B981,
+                                                          ))
+                                                    .withValues(alpha: 0.1),
                                             borderRadius: BorderRadius.circular(
                                               8,
                                             ),
@@ -2328,12 +2364,13 @@ class MapScreenState extends State<MapScreen> {
                                               const SizedBox(height: 2),
                                               Text(
                                                 isCity
-                                                  ? (result['secondaryText']
-                                                      ?.toString() ??
-                                                    result['description']
-                                                      ?.toString() ??
-                                                    '')
-                                                  : (result['vicinity'] ?? ''),
+                                                    ? (result['secondaryText']
+                                                              ?.toString() ??
+                                                          result['description']
+                                                              ?.toString() ??
+                                                          '')
+                                                    : (result['vicinity'] ??
+                                                          ''),
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: Colors.grey[600],
@@ -2352,7 +2389,8 @@ class MapScreenState extends State<MapScreen> {
                                             children: [
                                               if (result['rating'] != 0)
                                                 Row(
-                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
                                                   children: [
                                                     Icon(
                                                       Icons.star,

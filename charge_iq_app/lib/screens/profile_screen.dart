@@ -7,6 +7,7 @@ import '../services/vehicle_service.dart';
 import '../utils/app_snackbar.dart';
 import 'sign_in_page.dart';
 import 'manage_vehicles_screen.dart';
+import 'premium_plans_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,7 +22,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   User? _user;
   bool _quickChargeUseAI = true;
 
+  int _routesTaken = 0;
+  int _stationsFound = 0;
+  int _minsSaved = 0;
+
   static const String _aiPrefKey = 'quick_charge_use_ai';
+  static const String _routesPrefKey = 'stats_routes_taken';
+  static const String _stationsPrefKey = 'stats_stations_found';
+  static const String _minsPrefKey = 'stats_mins_saved';
 
   @override
   void initState() {
@@ -34,6 +42,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _quickChargeUseAI = prefs.getBool(_aiPrefKey) ?? true;
+      _routesTaken = prefs.getInt(_routesPrefKey) ?? 0;
+      _stationsFound = prefs.getInt(_stationsPrefKey) ?? 0;
+      _minsSaved = prefs.getInt(_minsPrefKey) ?? 0;
     });
   }
 
@@ -128,21 +139,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF00796B),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'Premium Member',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const PremiumPlansScreen(),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00796B),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.star, color: Colors.white, size: 12),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Pro Member',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -175,23 +203,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _buildStatItem(
-                        '24',
-                        'Sessions',
-                        Icons.flash_on,
+                        '$_routesTaken',
+                        'Routes Taken',
+                        Icons.alt_route,
                         const Color(0xFF00D26A),
                       ),
                       Container(width: 1, height: 40, color: Colors.grey[200]),
                       _buildStatItem(
-                        '482',
-                        'kWh Charged',
-                        Icons.battery_charging_full,
+                        '$_stationsFound',
+                        'Stations Found',
+                        Icons.ev_station,
                         const Color(0xFF1565C0),
                       ),
                       Container(width: 1, height: 40, color: Colors.grey[200]),
                       _buildStatItem(
-                        '1,248',
-                        'Miles Driven',
-                        Icons.directions_car,
+                        '$_minsSaved',
+                        'Mins Saved',
+                        Icons.timer,
                         const Color(0xFF7E57C2),
                       ),
                     ],
@@ -243,31 +271,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   const SizedBox(height: 24),
 
-                  const Text(
-                    'Recent Activity',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  _buildActivityItem(
-                    'Tesla Supercharger - Downtown',
-                    '2 hours ago',
-                    '32 kWh',
-                    '\$12.50',
-                    Icons.flash_on,
-                  ),
-                  _buildActivityItem(
-                    'ChargePoint Station - Mall',
-                    'Yesterday',
-                    '18 kWh',
-                    '\$8.20',
-                    Icons.ev_station,
-                  ),
-
+                  // (Recent Activity section removed)
                   const SizedBox(height: 24),
 
                   const Text(
@@ -361,11 +365,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
 
                   _buildSettingItem(
+                    'Premium Plans',
+                    Icons.star_outline,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const PremiumPlansScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildSettingItem(
                     'Payment Methods',
                     Icons.payment,
                     badgeCount: 2,
                   ),
-                  _buildSettingItem('Charging Preferences', Icons.tune),
                   _buildSettingItem(
                     'Saved Locations',
                     Icons.bookmark_border,
@@ -729,80 +743,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
-    );
-  }
-
-  Widget _buildActivityItem(
-    String title,
-    String time,
-    String energy,
-    String cost,
-    IconData icon,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE0F7FA),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: const Color(0xFF00D26A), size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  time,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    energy,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            cost,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-        ],
-      ),
     );
   }
 

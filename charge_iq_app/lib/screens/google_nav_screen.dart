@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// A full-screen navigation experience powered by the Google Navigation SDK.
 ///
@@ -22,9 +23,11 @@ class GoogleNavScreen extends StatefulWidget {
   final double destinationLng;
   final String destinationName;
   final String? destinationAddress;
+
   /// Optional intermediate waypoints (charging stops) from the trip planner.
   /// Each map must have 'lat' (double), 'lng' (double), and 'name' (String).
   final List<Map<String, dynamic>> tripWaypoints;
+
   /// When true, skips the route-preview phase and starts turn-by-turn
   /// guidance immediately once the route is calculated.
   final bool autoStart;
@@ -61,6 +64,10 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   String _duration = '';
   bool _isMuted = false;
 
+  // ─── Progression tracking ────────────────────────────────────────────────
+  int? _initialDistanceMeters;
+  bool _routeRecorded = false;
+
   // ─── Animations ──────────────────────────────────────────────────────────
   late AnimationController _panelController;
   late Animation<double> _panelAnimation;
@@ -75,10 +82,12 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
     super.initState();
 
     // Force light status-bar icons regardless of system theme.
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarBrightness: Brightness.light,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     _panelController = AnimationController(
       vsync: this,
@@ -151,7 +160,8 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Could not start navigation session.\n${e.toString()}';
+          _errorMessage =
+              'Could not start navigation session.\n${e.toString()}';
         });
       }
     }
@@ -199,7 +209,10 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
     allWaypoints.add(
       NavigationWaypoint.withLatLngTarget(
         title: widget.destinationName,
-        target: LatLng(latitude: widget.destinationLat, longitude: widget.destinationLng),
+        target: LatLng(
+          latitude: widget.destinationLat,
+          longitude: widget.destinationLng,
+        ),
       ),
     );
 
@@ -224,6 +237,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
           final info = await GoogleMapsNavigator.getCurrentTimeAndDistance();
           if (mounted) {
             setState(() {
+              _initialDistanceMeters = info.distance.toInt();
               _distance = _formatDistance(info.distance.toInt());
               _duration = _formatDuration(info.time.toInt());
             });
@@ -302,6 +316,18 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
       _guidanceActive = true;
     }
 
+    // Check for >= 80% route completion tracking
+    if (_guidanceActive && !_routeRecorded && _initialDistanceMeters != null) {
+      final remaining = event.navInfo.distanceToFinalDestinationMeters;
+      if (remaining != null) {
+        // If remaining is <= 20% of initial distance -> 80% traversed
+        if (remaining <= _initialDistanceMeters! * 0.2) {
+          _routeRecorded = true;
+          _incrementRoutesTaken();
+        }
+      }
+    }
+
     // Update distance while navigating.
     final cur = event.navInfo.currentStep;
     if (cur != null && mounted) {
@@ -348,6 +374,17 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
     if (mounted) setState(() => _isMuted = muted);
   }
 
+  Future<void> _incrementRoutesTaken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final current = prefs.getInt('stats_routes_taken') ?? 0;
+      await prefs.setInt('stats_routes_taken', current + 1);
+      debugPrint('Route taken! Total routes: ${current + 1}');
+    } catch (e) {
+      debugPrint('Failed to save route progress: $e');
+    }
+  }
+
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   String _formatDistance(int meters) {
@@ -369,58 +406,60 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
     return Theme(
       data: ThemeData.light(useMaterial3: true),
       child: Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-          // ── Google Navigation View ──────────────────────────────────────
-          if (_isSessionInitialized)
-            GoogleMapsNavigationView(
-              onViewCreated: _onViewCreated,
-              initialNavigationUIEnabledPreference:
-                  NavigationUIEnabledPreference.disabled,
-              initialCameraPosition: CameraPosition(
-                target: LatLng(latitude: widget.destinationLat, longitude: widget.destinationLng),
-                zoom: 12,
-              ),
-              initialMapType: MapType.normal,
-              initialMapColorScheme: MapColorScheme.light,
-            ),
-
-          // ── Loading overlay ─────────────────────────────────────────────
-          if (_isLoading) _buildLoadingOverlay(),
-
-          // ── Error overlay ───────────────────────────────────────────────
-          if (_errorMessage != null && !_isLoading) _buildErrorOverlay(),
-
-          // ── Preview phase UI ────────────────────────────────────────────
-          if (!_isLoading && _errorMessage == null && !_isNavigating) ...[
-            _buildTopBar(),
-            if (_routeSet)
-              AnimatedBuilder(
-                animation: _panelAnimation,
-                builder: (_, child) => Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Transform.translate(
-                    offset: Offset(
-                        0, (1 - _panelAnimation.value) * 300),
-                    child: Opacity(
-                      opacity: _panelAnimation.value.clamp(0.0, 1.0),
-                      child: child,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // ── Google Navigation View ──────────────────────────────────────
+              if (_isSessionInitialized)
+                GoogleMapsNavigationView(
+                  onViewCreated: _onViewCreated,
+                  initialNavigationUIEnabledPreference:
+                      NavigationUIEnabledPreference.disabled,
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(
+                      latitude: widget.destinationLat,
+                      longitude: widget.destinationLng,
                     ),
+                    zoom: 12,
                   ),
+                  initialMapType: MapType.normal,
+                  initialMapColorScheme: MapColorScheme.light,
                 ),
-                child: _buildPreviewPanel(),
-              ),
-          ],
 
-          // ── Navigating phase UI ─────────────────────────────────────────
-          if (_isNavigating) _buildNavControls(),
-        ],
+              // ── Loading overlay ─────────────────────────────────────────────
+              if (_isLoading) _buildLoadingOverlay(),
+
+              // ── Error overlay ───────────────────────────────────────────────
+              if (_errorMessage != null && !_isLoading) _buildErrorOverlay(),
+
+              // ── Preview phase UI ────────────────────────────────────────────
+              if (!_isLoading && _errorMessage == null && !_isNavigating) ...[
+                _buildTopBar(),
+                if (_routeSet)
+                  AnimatedBuilder(
+                    animation: _panelAnimation,
+                    builder: (_, child) => Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Transform.translate(
+                        offset: Offset(0, (1 - _panelAnimation.value) * 300),
+                        child: Opacity(
+                          opacity: _panelAnimation.value.clamp(0.0, 1.0),
+                          child: child,
+                        ),
+                      ),
+                    ),
+                    child: _buildPreviewPanel(),
+                  ),
+              ],
+
+              // ── Navigating phase UI ─────────────────────────────────────────
+              if (_isNavigating) _buildNavControls(),
+            ],
+          ),
+        ),
       ),
-    ),
-    ),
     );
   }
 
@@ -461,10 +500,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
               const SizedBox(height: 12),
               const Text(
                 'Navigation Unavailable',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
@@ -570,7 +606,10 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                     if (widget.tripWaypoints.isNotEmpty)
                       Text(
                         'Via ${widget.tripWaypoints.length} charging stop${widget.tripWaypoints.length > 1 ? 's' : ''}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF34A853)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF34A853),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       )
@@ -584,7 +623,6 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                   ],
                 ),
               ),
-
             ],
           ),
         ),
@@ -660,18 +698,29 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                     itemCount: widget.tripWaypoints.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 6),
                     itemBuilder: (context, i) {
-                      final name = widget.tripWaypoints[i]['name']?.toString() ?? 'Stop ${i + 1}';
+                      final name =
+                          widget.tripWaypoints[i]['name']?.toString() ??
+                          'Stop ${i + 1}';
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF34A853).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFF34A853).withOpacity(0.3)),
+                          border: Border.all(
+                            color: const Color(0xFF34A853).withOpacity(0.3),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.ev_station, size: 12, color: Color(0xFF34A853)),
+                            const Icon(
+                              Icons.ev_station,
+                              size: 12,
+                              color: Color(0xFF34A853),
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               name,
@@ -804,15 +853,11 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: _isMuted
-                      ? const Color(0xFF1A1A2E)
-                      : Colors.white,
+                  color: _isMuted ? const Color(0xFF1A1A2E) : Colors.white,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  _isMuted
-                      ? Icons.volume_off_rounded
-                      : Icons.volume_up_rounded,
+                  _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
                   color: _isMuted ? Colors.white : const Color(0xFF1A1A2E),
                   size: 26,
                 ),
