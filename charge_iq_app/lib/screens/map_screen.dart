@@ -30,6 +30,7 @@ class MapScreenState extends State<MapScreen> {
   bool isLoadingStations = false;
   bool isLoadingDirections = false;
   bool isAISelectingStation = false;
+  bool _isFetchingCurrentLocation = false;
   LatLng? currentLocation;
   String? currentAddressShort;
   BitmapDescriptor? customEVIcon;
@@ -231,7 +232,7 @@ class MapScreenState extends State<MapScreen> {
     );
   }
 
-  Future<void> getCurrentLocation() async {
+  Future<void> getCurrentLocation({bool loadStations = true}) async {
     try {
       var status = await Permission.location.status;
       if (!status.isGranted) {
@@ -282,11 +283,46 @@ class MapScreenState extends State<MapScreen> {
       await _updateCurrentLocationAddress();
 
       // Auto-load nearby stations within 30km
-      await loadNearbyStations();
+      if (loadStations) {
+        await loadNearbyStations();
+      }
     } catch (e) {
       debugPrint('Error getting location: $e');
       AppSnackBar.error(context, 'Unable to get your location');
     }
+  }
+
+  Future<void> _onMyLocationPressed() async {
+    if (_isFetchingCurrentLocation) return;
+
+    if (currentLocation == null) {
+      if (mounted) {
+        setState(() {
+          _isFetchingCurrentLocation = true;
+        });
+      }
+
+      try {
+        await getCurrentLocation(loadStations: false);
+
+        if (!mounted) return;
+        if (currentLocation != null) {
+          mapController?.animateCamera(
+            CameraUpdate.newLatLngZoom(currentLocation!, 13),
+          );
+          unawaited(loadNearbyStations());
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isFetchingCurrentLocation = false;
+          });
+        }
+      }
+      return;
+    }
+
+    await getCurrentLocation();
   }
 
   Future<void> _showPermissionDialog() async {
@@ -2469,21 +2505,33 @@ class MapScreenState extends State<MapScreen> {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: getCurrentLocation,
+                      onTap: _isFetchingCurrentLocation
+                          ? null
+                          : _onMyLocationPressed,
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                         width: 56,
                         height: 56,
                         alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.my_location,
-                          color: Color(0xFF3B82F6),
-                          size: 24,
+                        child: _isFetchingCurrentLocation
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Color(0xFF3B82F6),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.my_location,
+                                color: Color(0xFF3B82F6),
+                                size: 24,
+                              ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                
               ],
             ),
           ),
