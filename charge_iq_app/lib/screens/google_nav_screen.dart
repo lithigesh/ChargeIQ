@@ -278,6 +278,8 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
 
     // Enable Google Nav UI (turn card, speed alert, etc.)
     await _navViewController!.setNavigationUIEnabled(true);
+    // Keep SDK incident report button enabled.
+    await _navViewController!.setReportIncidentButtonEnabled(true);
     // Keep map in light mode after nav UI takes over
     await _navViewController!.setMapColorScheme(MapColorScheme.light);
 
@@ -324,6 +326,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   Future<void> _stopNavigation() async {
     _guidanceActive = false;
     await GoogleMapsNavigator.stopGuidance();
+    await _navViewController?.setNavigationFooterEnabled(true);
     await _navViewController?.setNavigationUIEnabled(false);
 
     if (mounted) setState(() => _isNavigating = false);
@@ -759,12 +762,13 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   }
 
   Widget _buildNavControls() {
+    final safeBottom = MediaQuery.of(context).padding.bottom;
     return Positioned(
-      top: 12,
       right: 16,
+      bottom: safeBottom + 160,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Stop / Exit button ──────────────────────────────────────
           Material(
             elevation: 6,
             shape: const CircleBorder(),
@@ -789,18 +793,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
               ),
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Exit',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              shadows: [Shadow(blurRadius: 4, color: Colors.black54)],
-            ),
-          ),
-          const SizedBox(height: 12),
-          // ── Mute / Unmute button ────────────────────────────────────
+          const SizedBox(height: 10),
           Material(
             elevation: 6,
             shape: const CircleBorder(),
@@ -824,16 +817,6 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                   size: 26,
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _isMuted ? 'Unmute' : 'Mute',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              shadows: [Shadow(blurRadius: 4, color: Colors.black54)],
             ),
           ),
         ],

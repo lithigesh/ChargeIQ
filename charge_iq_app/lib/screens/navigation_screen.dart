@@ -1299,6 +1299,8 @@ class _NavigationScreenState extends State<NavigationScreen>
                               destinationLng: _destinationLatLng!.longitude,
                               destinationName: _displayDestinationName,
                               destinationAddress: widget.destination,
+                              tripWaypoints: _getTripWaypointsForGoogleNav(),
+                              autoStart: true,
                             ),
                           ),
                         );
@@ -1365,6 +1367,24 @@ class _NavigationScreenState extends State<NavigationScreen>
       return (t != null && t.trim().isNotEmpty) ? t.trim() : null;
     }
     return null;
+  }
+
+  List<Map<String, dynamic>> _getTripWaypointsForGoogleNav() {
+    final tripWaypoints = <Map<String, dynamic>>[];
+    for (int index = 0; index < _waypoints.length; index++) {
+      final waypoint = _waypoints[index];
+      final waypointName =
+          index < _waypointNames.length && _waypointNames[index].trim().isNotEmpty
+          ? _waypointNames[index].trim()
+          : 'Stop ${index + 1}';
+
+      tripWaypoints.add({
+        'lat': waypoint.latitude,
+        'lng': waypoint.longitude,
+        'name': waypointName,
+      });
+    }
+    return tripWaypoints;
   }
 
   Widget _buildStopChip(
