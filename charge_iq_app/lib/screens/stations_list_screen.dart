@@ -571,6 +571,82 @@ class _StationsListScreenState extends State<StationsListScreen>
     return nameLower.contains(brand);
   }
 
+  String _stationPlaceId(Map<String, dynamic> station) {
+    return (station['placeId'] ?? station['id'] ?? '').toString();
+  }
+
+  double _stationScore(Map<String, dynamic> station) {
+    final bool? isOpen = station['isOpen'] as bool?;
+    final double rating = (station['rating'] as num?)?.toDouble() ?? 0.0;
+    final int ratingCount = (station['userRatingsTotal'] as num?)?.toInt() ?? 0;
+    final double distance = (station['distance'] as num?)?.toDouble() ?? 999.0;
+
+    double score = 0.0;
+
+    if (isOpen == true) score += 100.0;
+    if (isOpen == false) score -= 200.0;
+
+    score += rating * 10.0;
+    if (ratingCount > 0) score += sqrt(ratingCount) * 0.5;
+
+    score -= distance * 2.0;
+
+    if (_isRecommendedForVehicle(station)) {
+      score += 8.0;
+    }
+
+    return score;
+  }
+
+  Map<String, dynamic>? _bestScoredStation(List<Map<String, dynamic>> stations) {
+    if (stations.isEmpty) return null;
+
+    final openStations = stations.where((s) => s['isOpen'] == true).toList();
+    final candidates = openStations.isNotEmpty ? openStations : stations;
+
+    Map<String, dynamic>? best;
+    double bestScore = -double.infinity;
+
+    for (final station in candidates) {
+      final score = _stationScore(station);
+      if (score > bestScore) {
+        bestScore = score;
+        best = station;
+      }
+    }
+
+    return best;
+  }
+
+  List<Map<String, dynamic>> _stationsForDisplay() {
+    final stations = List<Map<String, dynamic>>.from(filteredStations);
+    final best = _bestScoredStation(stations);
+    if (best == null) {
+      stations.sort((a, b) {
+        final aDist = (a['distance'] as num?)?.toDouble() ?? double.infinity;
+        final bDist = (b['distance'] as num?)?.toDouble() ?? double.infinity;
+        return aDist.compareTo(bDist);
+      });
+      return stations;
+    }
+
+    final bestId = _stationPlaceId(best);
+    if (bestId.isEmpty) return stations;
+
+    stations.sort((a, b) {
+      final aIsBest = _stationPlaceId(a) == bestId;
+      final bIsBest = _stationPlaceId(b) == bestId;
+      if (aIsBest && !bIsBest) return -1;
+      if (!aIsBest && bIsBest) return 1;
+
+      final aDist = (a['distance'] as num?)?.toDouble() ?? double.infinity;
+      final bDist = (b['distance'] as num?)?.toDouble() ?? double.infinity;
+      return aDist.compareTo(bDist);
+    });
+
+    return stations;
+  }
+
   Future<void> _fetchStationsForVehicle(Vehicle vehicle) async {
     _startAnimations();
     setState(() {
@@ -1340,6 +1416,10 @@ class _StationsListScreenState extends State<StationsListScreen>
 
   // ── List ───────────────────────────────────────────────────────────────────
   Widget _buildList() {
+    final displayStations = _stationsForDisplay();
+    final bestStation = _bestScoredStation(displayStations);
+    final bestStationId = bestStation != null ? _stationPlaceId(bestStation) : '';
+
     return ListView(
       controller: _listScrollController,
       padding: const EdgeInsets.only(bottom: 32),
@@ -1347,16 +1427,21 @@ class _StationsListScreenState extends State<StationsListScreen>
         _buildControlsRow(),
         _buildFilterChips(),
         _buildResultsBar(),
-        if (filteredStations.isEmpty)
+        if (displayStations.isEmpty)
           SizedBox(height: 360, child: _buildEmptyState())
         else
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Column(
               children: List.generate(
-                filteredStations.length,
-                (i) =>
-                    _buildStationCard(station: filteredStations[i], index: i),
+                displayStations.length,
+                (i) => _buildStationCard(
+                  station: displayStations[i],
+                  index: i,
+                  isBestNearby:
+                      bestStationId.isNotEmpty &&
+                      _stationPlaceId(displayStations[i]) == bestStationId,
+                ),
               ),
             ),
           ),
@@ -1368,6 +1453,7 @@ class _StationsListScreenState extends State<StationsListScreen>
   Widget _buildStationCard({
     required Map<String, dynamic> station,
     required int index,
+    bool isBestNearby = false,
   }) {
     final name = station['name'] as String;
     final location = station['vicinity'] as String;
@@ -1385,6 +1471,8 @@ class _StationsListScreenState extends State<StationsListScreen>
         : '$driveDuration drive';
     final chargingType = _chargingTypeLabel(station);
     final chargingTypeIcon = _chargingTypeIcon(chargingType);
+    final bestBg = const Color(0xFFFFF3E0);
+    final bestBorder = const Color(0xFFFFB74D);
 
     final statusBg = isOpen ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE);
     final statusText = isOpen
@@ -1403,8 +1491,10 @@ class _StationsListScreenState extends State<StationsListScreen>
           color: _cardBg,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isRec ? _green(0.35) : const Color(0xFFE8EDF5),
-            width: isRec ? 1.5 : 1,
+            color: isBestNearby
+                ? bestBorder
+                : (isRec ? _green(0.35) : const Color(0xFFE8EDF5)),
+            width: isBestNearby ? 1.8 : (isRec ? 1.5 : 1),
           ),
           boxShadow: [
             BoxShadow(
@@ -1417,6 +1507,35 @@ class _StationsListScreenState extends State<StationsListScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (isBestNearby)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: bestBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.workspace_premium_rounded,
+                      color: Color(0xFFEF6C00),
+                      size: 12,
+                    ),
+                    SizedBox(width: 5),
+                    Text(
+                      'Best Nearby Station',
+                      style: TextStyle(
+                        color: Color(0xFFEF6C00),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (isRec)
               Container(
                 width: double.infinity,

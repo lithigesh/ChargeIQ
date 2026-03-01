@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -48,6 +49,7 @@ class MapScreenState extends State<MapScreen> {
   List<Map<String, dynamic>> _allLoadedStations = [];
   List<Map<String, dynamic>> _searchResults = [];
   bool _showSearchResults = false;
+  Timer? _searchDebounce;
 
   // Quick Charge AI setting
   bool useAIForQuickCharge = true;
@@ -83,6 +85,7 @@ class MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     searchController.dispose();
     searchFocusNode.dispose();
     mapController?.dispose();
@@ -1867,22 +1870,78 @@ class MapScreenState extends State<MapScreen> {
 
   // Search functionality
   void _onSearchChanged() {
-    final query = searchController.text.toLowerCase();
+    _searchDebounce?.cancel();
 
-    // Determine the new search results based on the query
-    final results = query.isEmpty
-        ? <Map<String, dynamic>>[]
-        : _filterStations(query);
-    final showResults = results.isNotEmpty;
-
-    // Only rebuild the widget tree if there's a difference in whether we are
-    // showing the overlay, OR if the overlay is ACTIVELY being shown.
-    if (_showSearchResults != showResults || _showSearchResults) {
-      setState(() {
-        _searchResults = results;
-        _showSearchResults = showResults;
-      });
+    final query = searchController.text.trim();
+    if (query.isEmpty) {
+      if (_showSearchResults || _searchResults.isNotEmpty) {
+        setState(() {
+          _searchResults = [];
+          _showSearchResults = false;
+        });
+      }
+      return;
     }
+
+    final stationResults = _filterStations(query.toLowerCase())
+        .map((station) => {
+              ...station,
+              '_resultType': 'station',
+            })
+        .toList();
+
+    // Show station matches immediately (no network wait).
+    setState(() {
+      _searchResults = stationResults;
+      _showSearchResults = stationResults.isNotEmpty;
+    });
+
+    // Fetch city suggestions shortly after typing.
+    _searchDebounce = Timer(const Duration(milliseconds: 120), () {
+      _runCombinedSearch(query, precomputedStationResults: stationResults);
+    });
+  }
+
+  Future<void> _runCombinedSearch(
+    String rawQuery, {
+    List<Map<String, dynamic>>? precomputedStationResults,
+  }) async {
+    final query = rawQuery.toLowerCase();
+
+    final stationResults =
+        precomputedStationResults ??
+        _filterStations(query)
+            .map((station) => {
+                  ...station,
+                  '_resultType': 'station',
+                })
+            .toList();
+
+    List<Map<String, dynamic>> cityResults = [];
+    if (rawQuery.length >= 1) {
+      cityResults = await _fetchCitySuggestions(rawQuery);
+    }
+
+    if (!mounted) return;
+    if (searchController.text.trim().toLowerCase() != query) return;
+
+    final seenCityPlaceIds = <String>{};
+    final merged = <Map<String, dynamic>>[
+      ...stationResults,
+      ...cityResults.where((city) {
+        final placeId = city['placeId']?.toString() ?? '';
+        if (placeId.isEmpty || seenCityPlaceIds.contains(placeId)) {
+          return false;
+        }
+        seenCityPlaceIds.add(placeId);
+        return true;
+      }),
+    ];
+
+    setState(() {
+      _searchResults = merged;
+      _showSearchResults = merged.isNotEmpty;
+    });
   }
 
   List<Map<String, dynamic>> _filterStations(String query) {
@@ -1891,6 +1950,183 @@ class MapScreenState extends State<MapScreen> {
       final vicinity = station['vicinity'].toString().toLowerCase();
       return name.contains(query) || vicinity.contains(query);
     }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchCitySuggestions(String input) async {
+    try {
+      final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/place/autocomplete/json'
+        '?input=${Uri.encodeComponent(input)}'
+        '&types=(cities)'
+        '&key=$apiKey',
+      );
+
+      final response = await http.get(url);
+      if (response.statusCode != 200) return [];
+
+      final data = jsonDecode(response.body);
+      final predictions = (data['predictions'] as List<dynamic>? ?? []);
+
+      return predictions.take(6).map((item) {
+        final description = item['description']?.toString() ?? '';
+        final mainText =
+            item['structured_formatting']?['main_text']?.toString() ??
+                description.split(',').first;
+        final secondaryText =
+            item['structured_formatting']?['secondary_text']?.toString() ?? '';
+
+        return {
+          '_resultType': 'city',
+          'name': mainText,
+          'description': description,
+          'secondaryText': secondaryText,
+          'placeId': item['place_id']?.toString() ?? '',
+        };
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<LatLng?> _getCityLatLngFromPlaceId(String placeId) async {
+    if (placeId.isEmpty) return null;
+
+    try {
+      final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/place/details/json'
+        '?place_id=${Uri.encodeComponent(placeId)}'
+        '&fields=geometry'
+        '&key=$apiKey',
+      );
+
+      final response = await http.get(url);
+      if (response.statusCode != 200) return null;
+
+      final data = jsonDecode(response.body);
+      final location = data['result']?['geometry']?['location'];
+      if (location == null) return null;
+
+      final lat = (location['lat'] as num?)?.toDouble();
+      final lng = (location['lng'] as num?)?.toDouble();
+      if (lat == null || lng == null) return null;
+
+      return LatLng(lat, lng);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchStationsNearCenter({
+    required LatLng center,
+    double radiusKm = SEARCH_RADIUS_KM,
+  }) async {
+    final radiusMeters = (radiusKm * 1000).toInt();
+    final url = Uri.parse(
+      'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+      '?location=${center.latitude},${center.longitude}'
+      '&radius=$radiusMeters'
+      '&keyword=ev charging station electric vehicle'
+      '&key=$apiKey',
+    );
+
+    final response = await http.get(url);
+    if (response.statusCode != 200) return [];
+
+    final data = jsonDecode(response.body);
+    final results = (data['results'] as List<dynamic>? ?? []);
+
+    final stations = <Map<String, dynamic>>[];
+    for (final place in results) {
+      final lat = (place['geometry']?['location']?['lat'] as num?)?.toDouble();
+      final lng = (place['geometry']?['location']?['lng'] as num?)?.toDouble();
+      if (lat == null || lng == null) continue;
+
+      final stationPos = LatLng(lat, lng);
+      final distance = _calculateDistance(center, stationPos);
+      if (distance > radiusKm) continue;
+
+      stations.add({
+        'id': place['place_id'],
+        'name': place['name'] ?? 'Charging Station',
+        'lat': lat,
+        'lng': lng,
+        'vicinity': place['vicinity'] ?? '',
+        'rating': (place['rating'] as num?)?.toDouble() ?? 0.0,
+        'userRatingsTotal': place['user_ratings_total'] ?? 0,
+        'isOpen': place['opening_hours']?['open_now'],
+        'distance': distance,
+      });
+    }
+
+    stations.sort(
+      (a, b) => (a['distance'] as double).compareTo(b['distance'] as double),
+    );
+    return stations;
+  }
+
+  Future<void> _selectCityFromSearch(Map<String, dynamic> cityResult) async {
+    final placeId = cityResult['placeId']?.toString() ?? '';
+    final cityLabel = cityResult['name']?.toString() ?? 'Selected city';
+
+    _searchDebounce?.cancel();
+    setState(() {
+      _showSearchResults = false;
+      _searchResults = [];
+      searchController.clear();
+    });
+    searchFocusNode.unfocus();
+
+    setState(() {
+      isLoadingStations = true;
+      selectedStation = null;
+      polylines.clear();
+    });
+
+    try {
+      final cityCenter = await _getCityLatLngFromPlaceId(placeId);
+      if (cityCenter == null) {
+        AppSnackBar.error(context, 'Unable to locate selected city');
+        return;
+      }
+
+      final stations = await _fetchStationsNearCenter(center: cityCenter);
+      if (!mounted) return;
+
+      if (stations.isEmpty) {
+        setState(() {
+          _allLoadedStations = [];
+          markers.removeWhere((m) => m.markerId.value.startsWith('ChIJ'));
+        });
+        mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(cityCenter, 11),
+        );
+        AppSnackBar.info(
+          context,
+          'No charging stations found within ${SEARCH_RADIUS_KM.toInt()} km',
+        );
+        return;
+      }
+
+      _displayStations(stations);
+      setState(() {
+        _allLoadedStations = stations;
+      });
+
+      mapController?.animateCamera(CameraUpdate.newLatLngZoom(cityCenter, 12));
+      AppSnackBar.success(
+        context,
+        'Found ${stations.length} charging stations near ${cityResult['name'] ?? 'city'}',
+      );
+    } catch (e) {
+      debugPrint('City search error: $e');
+      AppSnackBar.error(context, 'Unable to search stations for this city');
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingStations = false;
+        });
+      }
+    }
   }
 
   Future<void> _selectStationFromSearch(Map<String, dynamic> station) async {
@@ -1969,7 +2205,7 @@ class MapScreenState extends State<MapScreen> {
                     controller: searchController,
                     focusNode: searchFocusNode,
                     decoration: InputDecoration(
-                      hintText: 'Search charging stations...',
+                      hintText: 'Search stations or city...',
                       hintStyle: TextStyle(color: Colors.grey[500]),
                       prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
                       suffixIcon: searchController.text.isNotEmpty
@@ -2008,7 +2244,7 @@ class MapScreenState extends State<MapScreen> {
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    'No stations found',
+                                    'No matching results',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -2022,17 +2258,19 @@ class MapScreenState extends State<MapScreen> {
                               padding: EdgeInsets.zero,
                               itemCount: _searchResults.length,
                               itemBuilder: (context, index) {
-                                final station = _searchResults[index];
+                                final result = _searchResults[index];
+                                final isCity = result['_resultType'] == 'city';
                                 final distance =
-                                    station['distance']?.toStringAsFixed(1) ??
+                                    result['distance']?.toStringAsFixed(1) ??
                                     'N/A';
                                 final rating =
-                                    station['rating']?.toStringAsFixed(1) ??
+                                    result['rating']?.toStringAsFixed(1) ??
                                     'N/A';
 
                                 return InkWell(
-                                  onTap: () =>
-                                      _selectStationFromSearch(station),
+                                  onTap: () => isCity
+                                      ? _selectCityFromSearch(result)
+                                      : _selectStationFromSearch(result),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 16,
@@ -2051,16 +2289,21 @@ class MapScreenState extends State<MapScreen> {
                                         Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
-                                            color: const Color(
-                                              0xFF10B981,
-                                            ).withValues(alpha: 0.1),
+                                            color: (isCity
+                                                    ? const Color(0xFF4285F4)
+                                                    : const Color(0xFF10B981))
+                                                .withValues(alpha: 0.1),
                                             borderRadius: BorderRadius.circular(
                                               8,
                                             ),
                                           ),
-                                          child: const Icon(
-                                            Icons.ev_station,
-                                            color: Color(0xFF10B981),
+                                          child: Icon(
+                                            isCity
+                                                ? Icons.location_city
+                                                : Icons.ev_station,
+                                            color: isCity
+                                                ? const Color(0xFF4285F4)
+                                                : const Color(0xFF10B981),
                                             size: 20,
                                           ),
                                         ),
@@ -2071,7 +2314,10 @@ class MapScreenState extends State<MapScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                station['name'] ?? 'Station',
+                                                result['name'] ??
+                                                    (isCity
+                                                        ? 'City'
+                                                        : 'Station'),
                                                 style: const TextStyle(
                                                   fontWeight: FontWeight.w600,
                                                   fontSize: 15,
@@ -2081,7 +2327,13 @@ class MapScreenState extends State<MapScreen> {
                                               ),
                                               const SizedBox(height: 2),
                                               Text(
-                                                station['vicinity'] ?? '',
+                                                isCity
+                                                  ? (result['secondaryText']
+                                                      ?.toString() ??
+                                                    result['description']
+                                                      ?.toString() ??
+                                                    '')
+                                                  : (result['vicinity'] ?? ''),
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: Colors.grey[600],
@@ -2093,41 +2345,48 @@ class MapScreenState extends State<MapScreen> {
                                           ),
                                         ),
                                         const SizedBox(width: 8),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            if (station['rating'] != 0)
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    Icons.star,
-                                                    size: 14,
-                                                    color: Colors.amber[700],
-                                                  ),
-                                                  const SizedBox(width: 2),
-                                                  Text(
-                                                    rating,
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w600,
+                                        if (!isCity)
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              if (result['rating'] != 0)
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.star,
+                                                      size: 14,
+                                                      color: Colors.amber[700],
                                                     ),
-                                                  ),
-                                                ],
+                                                    const SizedBox(width: 2),
+                                                    Text(
+                                                      rating,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                '${distance}km',
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: Color(0xFF4285F4),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              '${distance}km',
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                color: Color(0xFF4285F4),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                            ],
+                                          )
+                                        else
+                                          const Icon(
+                                            Icons.north_west_rounded,
+                                            color: Color(0xFF4285F4),
+                                            size: 18,
+                                          ),
                                       ],
                                     ),
                                   ),
