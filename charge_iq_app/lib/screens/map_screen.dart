@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' show cos, sqrt, asin;
 import 'package:charge_iq_app/screens/google_nav_screen.dart';
 import 'package:charge_iq_app/services/gemini_service.dart';
+import 'package:charge_iq_app/services/saved_location_service.dart';
 import '../utils/app_snackbar.dart';
 
 class MapScreen extends StatefulWidget {
@@ -37,6 +38,8 @@ class MapScreenState extends State<MapScreen> {
   BitmapDescriptor? customLocationIcon;
   Map<String, dynamic>? selectedStation;
   final GeminiService _geminiService = GeminiService();
+  final SavedLocationService _savedLocationService = SavedLocationService();
+  Set<String> _savedStationIds = {};
 
   // Trip route state
   bool _showingTripRoute = false;
@@ -72,7 +75,17 @@ class MapScreenState extends State<MapScreen> {
   Future<void> _initializeApp() async {
     await _loadCustomMarkers();
     await _loadAIPref();
+    await _loadSavedStations();
     await getCurrentLocation();
+  }
+
+  Future<void> _loadSavedStations() async {
+    final ids = await _savedLocationService.getSavedStationIds();
+    if (mounted) {
+      setState(() {
+        _savedStationIds = ids;
+      });
+    }
   }
 
   Future<void> _loadAIPref() async {
@@ -870,11 +883,20 @@ class MapScreenState extends State<MapScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _buildStationDetailsCard(station),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return _buildStationDetailsCard(station, setModalState);
+          },
+        );
+      },
     );
   }
 
-  Widget _buildStationDetailsCard(Map<String, dynamic> station) {
+  Widget _buildStationDetailsCard(
+    Map<String, dynamic> station,
+    StateSetter setModalState,
+  ) {
     final distance = station['distance']?.toStringAsFixed(1) ?? 'N/A';
     final rating = station['rating']?.toDouble() ?? 0.0;
     final totalRatings = station['userRatingsTotal'] ?? 0;
@@ -955,6 +977,65 @@ class MapScreenState extends State<MapScreen> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(
+                    _savedStationIds.contains(station['id'])
+                        ? Icons.bookmark
+                        : Icons.bookmark_border,
+                    color: _savedStationIds.contains(station['id'])
+                        ? const Color(0xFF4285F4)
+                        : Colors.grey[400],
+                    size: 28,
+                  ),
+                  onPressed: () async {
+                    // Optimistic update UI
+                    final stationId = station['id'];
+                    final isCurrentlySaved = _savedStationIds.contains(
+                      stationId,
+                    );
+
+                    // Update MapScreenState (for backing data)
+                    setState(() {
+                      if (isCurrentlySaved) {
+                        _savedStationIds.remove(stationId);
+                      } else {
+                        _savedStationIds.add(stationId);
+                      }
+                    });
+
+                    // Update BottomSheet state directly
+                    setModalState(() {});
+
+                    final nowSaved = await _savedLocationService
+                        .toggleSavedStation(station);
+
+                    // Revert if API failed
+                    if (nowSaved != !isCurrentlySaved) {
+                      if (mounted) {
+                        setState(() {
+                          if (nowSaved) {
+                            _savedStationIds.add(stationId);
+                          } else {
+                            _savedStationIds.remove(stationId);
+                          }
+                        });
+                        setModalState(() {});
+                        AppSnackBar.error(
+                          context,
+                          'Failed to update saved status',
+                        );
+                      }
+                    } else {
+                      AppSnackBar.success(
+                        context,
+                        nowSaved
+                            ? 'Station saved'
+                            : 'Station removed from saved',
+                      );
+                    }
+                  },
                 ),
               ],
             ),
@@ -2565,11 +2646,10 @@ class MapScreenState extends State<MapScreen> {
                                 color: Color(0xFF3B82F6),
                                 size: 24,
                               ),
-                        ),
                       ),
                     ),
                   ),
-                
+                ),
               ],
             ),
           ),
