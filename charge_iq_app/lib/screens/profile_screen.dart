@@ -8,6 +8,9 @@ import '../utils/app_snackbar.dart';
 import 'sign_in_page.dart';
 import 'manage_vehicles_screen.dart';
 import 'premium_plans_screen.dart';
+import 'saved_locations_screen.dart';
+import '../services/saved_location_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,6 +22,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
   final VehicleService _vehicleService = VehicleService();
+  final SavedLocationService _savedLocationService = SavedLocationService();
   User? _user;
   bool _quickChargeUseAI = true;
 
@@ -380,10 +384,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Icons.payment,
                     badgeCount: 2,
                   ),
-                  _buildSettingItem(
-                    'Saved Locations',
-                    Icons.bookmark_border,
-                    badgeCount: 8,
+                  StreamBuilder<QuerySnapshot>(
+                    stream: _savedLocationService.getSavedStationsStream(),
+                    builder: (context, snapshot) {
+                      int? count;
+                      if (snapshot.hasData) {
+                        count = snapshot.data!.docs.length;
+                        if (count == 0) count = null; // Don't show badge if 0
+                      }
+
+                      return _buildSettingItem(
+                        'Saved Locations',
+                        Icons.bookmark_border,
+                        badgeCount: count,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const SavedLocationsScreen(),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
                   if (!(_user?.providerData.any(
                         (p) => p.providerId == 'google.com',
