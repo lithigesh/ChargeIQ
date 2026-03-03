@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -470,7 +471,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
       child: SizedBox(
         width: 48,
         height: 48,
-        child: CircularProgressIndicator(
+        child: AppLottieLoader(
           color: Color(0xFF4285F4),
           strokeWidth: 3,
         ),
@@ -869,3 +870,4 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
     );
   }
 }
+

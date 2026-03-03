@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'firebase_options.dart';
@@ -16,7 +17,7 @@ import 'web_utils.dart' if (dart.library.io) 'web_utils_stub.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: "assets/.env");
 
   if (kIsWeb) {
     injectMapsScript();
@@ -219,7 +220,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         if (snapshot.connectionState == ConnectionState.waiting &&
             currentUser == null) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(child: AppLottieLoader()),
           );
         }
 
@@ -232,3 +233,4 @@ class _AuthWrapperState extends State<AuthWrapper> {
     );
   }
 }
+

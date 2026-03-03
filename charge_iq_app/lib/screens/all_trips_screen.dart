@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 
 import '../models/trip_plan.dart';
 import '../models/vehicle.dart';
@@ -170,7 +171,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
-            child: CircularProgressIndicator(color: _primaryGreen),
+            child: AppLottieLoader(color: _primaryGreen),
           );
         }
 
@@ -303,3 +304,4 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
     );
   }
 }
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import '../models/vehicle.dart';
 import '../services/vehicle_service.dart';
 import '../utils/app_snackbar.dart';
@@ -33,7 +34,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF10B981)),
+                  child: AppLottieLoader(color: Color(0xFF10B981)),
                 );
               }
 
@@ -1141,7 +1142,7 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
                     ? const SizedBox(
                         height: 22,
                         width: 22,
-                        child: CircularProgressIndicator(
+                        child: AppLottieLoader(
                           strokeWidth: 2.5,
                           color: Colors.white,
                         ),
@@ -1266,3 +1267,4 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
     );
   }
 }
+

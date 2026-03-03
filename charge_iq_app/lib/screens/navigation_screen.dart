@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -629,7 +630,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                   const SizedBox(
                     width: 50,
                     height: 50,
-                    child: CircularProgressIndicator(
+                    child: AppLottieLoader(
                       color: Color(0xFF4285F4),
                       strokeWidth: 3,
                     ),
@@ -1748,3 +1749,4 @@ class _NavigationScreenState extends State<NavigationScreen>
 ]
 ''';
 }
+

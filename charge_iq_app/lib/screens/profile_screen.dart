@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/vehicle.dart';
@@ -474,7 +475,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: SizedBox(
                 height: 24,
                 width: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: AppLottieLoader(strokeWidth: 2),
               ),
             ),
           );
@@ -840,3 +841,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+

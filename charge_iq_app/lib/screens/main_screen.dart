@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lottie/lottie.dart';
 import 'package:charge_iq_app/screens/map_screen.dart';
 import 'package:charge_iq_app/screens/stations_list_screen.dart';
 import 'package:charge_iq_app/screens/trip_planning_screen.dart';
@@ -279,12 +281,22 @@ class _MainScreenState extends State<MainScreen> {
                       ? const SizedBox(
                           width: 26,
                           height: 26,
-                          child: CircularProgressIndicator(
+                          child: AppLottieLoader(
                             strokeWidth: 2.5,
                             color: Colors.white,
                           ),
                         )
-                      : const Icon(Icons.bolt, size: 32, color: Colors.white),
+                      : ClipOval(
+                          child: SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Lottie.asset(
+                              'assets/lottie/quick_charge_button.json',
+                              fit: BoxFit.contain,
+                              repeat: true,
+                            ),
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -362,3 +374,4 @@ class _NavItem extends StatelessWidget {
     );
   }
 }
+

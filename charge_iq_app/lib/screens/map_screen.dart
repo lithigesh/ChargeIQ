@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -2645,7 +2646,7 @@ class MapScreenState extends State<MapScreen> {
             Container(
               color: Colors.black26,
               child: const Center(
-                child: CircularProgressIndicator(
+                child: AppLottieLoader(
                   color: Color(0xFF4285F4),
                   strokeWidth: 3,
                 ),
@@ -2721,7 +2722,7 @@ class MapScreenState extends State<MapScreen> {
                             ? const SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: CircularProgressIndicator(
+                                child: AppLottieLoader(
                                   strokeWidth: 2.5,
                                   color: Color(0xFF3B82F6),
                                 ),
@@ -2749,3 +2750,4 @@ class MapScreenState extends State<MapScreen> {
     );
   }
 }
+
