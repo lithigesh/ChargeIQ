@@ -40,7 +40,7 @@ android {
         }
         val apiKey = envProperties.getProperty("GOOGLE_MAPS_API_KEY") 
             ?: System.getenv("GOOGLE_MAPS_API_KEY") 
-            ?: ""
+            ?: "AIzaSyDpCuuPotVW57g8XcaBZAgoloeEMb_X-EE"
         
         println("Environment file: ${envFile.absolutePath}")
         println("Loaded GOOGLE_MAPS_API_KEY: ${if (apiKey.isNotEmpty()) "Yes (${apiKey.take(5)}...)" else "Found: NO"}")

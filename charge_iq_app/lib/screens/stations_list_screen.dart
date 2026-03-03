@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
@@ -855,23 +856,20 @@ class _StationsListScreenState extends State<StationsListScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (_, __) => Transform.scale(
-                    scale: _pulseAnimation.value,
-                    child: Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: _blue(0.08),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _blue(0.2), width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.ev_station_rounded,
-                        size: 30,
-                        color: _primaryBlue,
-                      ),
+                Transform.scale(
+                  scale: _pulseAnimation.value,
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: _blue(0.08),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _blue(0.2), width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.ev_station_rounded,
+                      size: 30,
+                      color: Color.fromARGB(255, 14, 18, 24),
                     ),
                   ),
                 ),
@@ -879,7 +877,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                 const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(
+                  child: AppLottieLoader(
                     valueColor: AlwaysStoppedAnimation<Color>(_accentGreen),
                     strokeWidth: 2.5,
                   ),
@@ -2503,3 +2501,4 @@ class _StationsListScreenState extends State<StationsListScreen>
     );
   }
 }
+

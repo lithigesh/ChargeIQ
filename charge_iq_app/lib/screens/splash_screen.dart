@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -130,7 +131,7 @@ class _SplashScreenState extends State<SplashScreen>
               child: const SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(
+                child: AppLottieLoader(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00D26A)),
                 ),
@@ -142,3 +143,4 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
+

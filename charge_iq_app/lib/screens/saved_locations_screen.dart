@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import '../services/saved_location_service.dart';
 import '../utils/app_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,7 +37,7 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
         stream: _savedLocationService.getSavedStationsStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: AppLottieLoader());
           }
 
           if (snapshot.hasError) {
@@ -242,3 +243,4 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
     );
   }
 }
+

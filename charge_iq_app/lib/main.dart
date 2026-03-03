@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'firebase_options.dart';
@@ -171,9 +172,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
         if (snapshot.connectionState == ConnectionState.waiting &&
             currentUser == null) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const Scaffold(body: Center(child: AppLottieLoader()));
         }
 
         if (hasData || currentUser != null) {

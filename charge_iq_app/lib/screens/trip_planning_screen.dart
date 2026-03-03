@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -590,7 +591,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
           child: SizedBox(
             height: 20,
             width: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: AppLottieLoader(strokeWidth: 2),
           ),
         ),
       );
@@ -1412,16 +1413,13 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(
+                    child: AppLottieLoader(
                       strokeWidth: 2.5,
                       color: Colors.white,
                     ),
                   ),
                   SizedBox(width: 12),
-                  Text(
-                    'Planning Route...',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  
                 ],
               )
             : const Text(
@@ -1438,7 +1436,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       stream: _tripService.getUserTrips(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: AppLottieLoader());
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -1567,3 +1565,4 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
     );
   }
 }
+

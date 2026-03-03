@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import '../services/auth_service.dart';
 import '../utils/app_snackbar.dart';
 import 'main_screen.dart';
@@ -328,7 +329,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             ? const SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: CircularProgressIndicator(
+                                child: AppLottieLoader(
                                   color: Colors.white,
                                   strokeWidth: 2.5,
                                 ),
@@ -398,7 +399,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             ? const SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: CircularProgressIndicator(
+                                child: AppLottieLoader(
                                   strokeWidth: 2.5,
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                     Color(0xFF00D26A),
@@ -521,3 +522,4 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 }
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:charge_iq_app/widgets/app_lottie_loader.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'dart:convert';
@@ -289,7 +290,7 @@ class _TripResultScreenState extends State<TripResultScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: const [
-          CircularProgressIndicator(color: Color(0xFF00D26A)),
+          AppLottieLoader(color: Color(0xFF00D26A)),
           SizedBox(height: 20),
           Text(
             'Planning your optimized journey...',
@@ -1048,3 +1049,4 @@ class _TripResultScreenState extends State<TripResultScreen>
     }
   }
 }
+
