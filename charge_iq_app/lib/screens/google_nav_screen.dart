@@ -176,8 +176,11 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
     await controller.setNavigationUIEnabled(false);
     await controller.setMyLocationEnabled(true);
 
-    // Always force light mode on the map, regardless of the system theme.
-    await controller.setMapColorScheme(MapColorScheme.light);
+    // Preview phase (nav UI disabled): MapColorScheme controls tiles.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    await controller.setMapColorScheme(
+      isDark ? MapColorScheme.dark : MapColorScheme.light,
+    );
 
     // Compute route
     await _setDestinationAndPreviewRoute();
@@ -294,8 +297,14 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
     await _navViewController!.setNavigationUIEnabled(true);
     // Keep SDK incident report button enabled.
     await _navViewController!.setReportIncidentButtonEnabled(true);
-    // Keep map in light mode after nav UI takes over
-    await _navViewController!.setMapColorScheme(MapColorScheme.light);
+    // IMPORTANT: When Navigation UI is enabled, MapColorScheme is ignored.
+    // Force night/day based on app theme so UI + tiles match.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    await _navViewController!.setForceNightMode(
+      isDark
+          ? NavigationForceNightMode.forceNight
+          : NavigationForceNightMode.forceDay,
+    );
 
     // Start turn-by-turn guidance
     await GoogleMapsNavigator.startGuidance();
@@ -403,62 +412,64 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Navigation screen always uses light theme for safety/visibility.
-    return Theme(
-      data: ThemeData.light(),
-      child: Scaffold(
-        body: SafeArea(
-          child: Stack(
-            children: [
-              // ── Google Navigation View ──────────────────────────────────────
-              if (_isSessionInitialized)
-                GoogleMapsNavigationView(
-                  onViewCreated: _onViewCreated,
-                  initialNavigationUIEnabledPreference:
-                      NavigationUIEnabledPreference.disabled,
-                  initialCameraPosition: CameraPosition(
-                    target: LatLng(
-                      latitude: widget.destinationLat,
-                      longitude: widget.destinationLng,
-                    ),
-                    zoom: 12,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // ── Google Navigation View ──────────────────────────────────────
+            if (_isSessionInitialized)
+              GoogleMapsNavigationView(
+                onViewCreated: _onViewCreated,
+                initialNavigationUIEnabledPreference:
+                    NavigationUIEnabledPreference.disabled,
+                initialForceNightMode: isDark
+                    ? NavigationForceNightMode.forceNight
+                    : NavigationForceNightMode.forceDay,
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(
+                    latitude: widget.destinationLat,
+                    longitude: widget.destinationLng,
                   ),
-                  initialMapType: MapType.normal,
-                  initialMapColorScheme: MapColorScheme.light,
+                  zoom: 12,
                 ),
+                initialMapType: MapType.normal,
+                initialMapColorScheme:
+                    isDark ? MapColorScheme.dark : MapColorScheme.light,
+              ),
 
-              // ── Loading overlay ─────────────────────────────────────────────
-              if (_isLoading) _buildLoadingOverlay(),
+            // ── Loading overlay ─────────────────────────────────────────────
+            if (_isLoading) _buildLoadingOverlay(),
 
-              // ── Error overlay ───────────────────────────────────────────────
-              if (_errorMessage != null && !_isLoading) _buildErrorOverlay(),
+            // ── Error overlay ───────────────────────────────────────────────
+            if (_errorMessage != null && !_isLoading) _buildErrorOverlay(),
 
-              // ── Preview phase UI ────────────────────────────────────────────
-              if (!_isLoading && _errorMessage == null && !_isNavigating) ...[
-                _buildTopBar(),
-                if (_routeSet)
-                  AnimatedBuilder(
-                    animation: _panelAnimation,
-                    builder: (_, child) => Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Transform.translate(
-                        offset: Offset(0, (1 - _panelAnimation.value) * 300),
-                        child: Opacity(
-                          opacity: _panelAnimation.value.clamp(0.0, 1.0),
-                          child: child,
-                        ),
+            // ── Preview phase UI ────────────────────────────────────────────
+            if (!_isLoading && _errorMessage == null && !_isNavigating) ...[
+              _buildTopBar(),
+              if (_routeSet)
+                AnimatedBuilder(
+                  animation: _panelAnimation,
+                  builder: (_, child) => Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Transform.translate(
+                      offset: Offset(0, (1 - _panelAnimation.value) * 300),
+                      child: Opacity(
+                        opacity: _panelAnimation.value.clamp(0.0, 1.0),
+                        child: child,
                       ),
                     ),
-                    child: _buildPreviewPanel(),
                   ),
-              ],
-
-              // ── Navigating phase UI ─────────────────────────────────────────
-              if (_isNavigating) _buildNavControls(),
+                  child: _buildPreviewPanel(),
+                ),
             ],
-          ),
+
+            // ── Navigating phase UI ─────────────────────────────────────────
+            if (_isNavigating) _buildNavControls(),
+          ],
         ),
       ),
     );

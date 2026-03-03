@@ -58,9 +58,6 @@ class MapScreenState extends State<MapScreen> {
   // Quick Charge AI setting
   bool useAIForQuickCharge = true;
 
-  // Dark mode map style
-  bool _isDark = false;
-
   // Cache settings
   static const String CACHE_KEY = 'map_ev_stations_cache';
   static const String CACHE_TIMESTAMP_KEY = 'map_ev_stations_timestamp';
@@ -97,16 +94,6 @@ class MapScreenState extends State<MapScreen> {
       setState(() {
         useAIForQuickCharge = prefs.getBool('quick_charge_use_ai') ?? true;
       });
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (isDark != _isDark) {
-      _isDark = isDark;
-      mapController?.setMapStyle(isDark ? _darkMapStyle : null);
     }
   }
 
@@ -887,32 +874,87 @@ class MapScreenState extends State<MapScreen> {
 
   String _chargingTypeLabel(Map<String, dynamic> station) {
     final name = (station['name'] ?? '').toString().toLowerCase();
-    if (name.contains('supercharger') || name.contains('tesla')) {
-      return 'CCS2';
-    }
-    if (name.contains('chademo')) return 'CHAdeMO';
-    if (name.contains('gb/t') || name.contains('gbt')) return 'GB/T';
-    if (name.contains('ccs')) return 'CCS2';
-    if (name.contains('fast')) return 'Fast Charge';
+    final vicinity = (station['vicinity'] ?? '').toString().toLowerCase();
+    final combined = '$name $vicinity';
 
-    final types = (station['types'] as List<dynamic>? ?? const <dynamic>[])
-        .map((e) => e.toString().toLowerCase())
-        .toList();
-    if (types.contains('electric_vehicle_charging_station')) return 'Type 2';
-    return 'Type 2';
+    // Specific connector types mentioned in the name
+    if (combined.contains('ccs2') || combined.contains('ccs-2')) return 'CCS2';
+    if (combined.contains('ccs1') || combined.contains('ccs-1')) return 'CCS1';
+    if (combined.contains('ccs')) return 'CCS2';
+    if (combined.contains('chademo')) return 'CHAdeMO';
+    if (combined.contains('gb/t') || combined.contains('gbt')) return 'GB/T';
+    if (combined.contains('type 2') ||
+        combined.contains('type2') ||
+        combined.contains('type-2'))
+      return 'Type 2';
+    if (combined.contains('type 1') ||
+        combined.contains('type1') ||
+        combined.contains('type-1'))
+      return 'Type 1';
+
+    // Tesla / Supercharger → CCS2 (India uses CCS2)
+    if (combined.contains('supercharger') || combined.contains('tesla'))
+      return 'CCS2';
+
+    // DC fast charging keywords
+    if (combined.contains('dc fast') ||
+        combined.contains('dcfc') ||
+        combined.contains('dc charger'))
+      return 'CCS2';
+
+    // Common Indian & global EV networks → infer their typical connector
+    if (combined.contains('tata power') || combined.contains('tata ev'))
+      return 'CCS2';
+    if (combined.contains('ather') || combined.contains('ather grid'))
+      return 'AC';
+    if (combined.contains('eesl') || combined.contains('energy efficiency'))
+      return 'CCS2';
+    if (combined.contains('fortum') || combined.contains('charge\u0026drive'))
+      return 'CCS2';
+    if (combined.contains('statiq')) return 'CCS2';
+    if (combined.contains('chargezone') || combined.contains('charge zone'))
+      return 'CCS2';
+    if (combined.contains('volttic') ||
+        combined.contains('jio-bp') ||
+        combined.contains('jiobp'))
+      return 'CCS2';
+    if (combined.contains('chargepoint')) return 'CCS2';
+    if (combined.contains('electrify') || combined.contains('evgo'))
+      return 'CCS2';
+    if (combined.contains('blink')) return 'CCS2';
+    if (combined.contains('kazam') ||
+        combined.contains('bolt.earth') ||
+        combined.contains('boltearth'))
+      return 'CCS2';
+
+    // AC / slow charging
+    if (combined.contains('ac charger') || combined.contains('slow charg'))
+      return 'AC';
+
+    // Generic "fast" keyword
+    if (combined.contains('fast charg') || combined.contains('rapid'))
+      return 'DC Fast';
+
+    return 'CCS2';
   }
 
   IconData _chargingTypeIcon(String type) {
     switch (type.toLowerCase()) {
       case 'ccs2':
+      case 'ccs1':
         return Icons.electrical_services_rounded;
       case 'chademo':
         return Icons.ev_station_rounded;
       case 'gb/t':
         return Icons.power_rounded;
+      case 'dc fast':
       case 'fast charge':
         return Icons.flash_on_rounded;
+      case 'ac':
+        return Icons.power_outlined;
+      case 'type 1':
       case 'type 2':
+        return Icons.ev_station_rounded;
       default:
         return Icons.ev_station_rounded;
     }
@@ -999,7 +1041,9 @@ class MapScreenState extends State<MapScreen> {
                       Text(
                         station['name'],
                         style: TextStyle(
-                          color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF1A1A2E),
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1018,7 +1062,9 @@ class MapScreenState extends State<MapScreen> {
                           Text(
                             '$distance km away',
                             style: TextStyle(
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                               fontSize: 14,
                             ),
                           ),
@@ -1105,7 +1151,9 @@ class MapScreenState extends State<MapScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: isOpen
-                          ? (isDark ? const Color(0xFF1B3A1F) : Colors.green[50])
+                          ? (isDark
+                                ? const Color(0xFF1B3A1F)
+                                : Colors.green[50])
                           : (isDark ? const Color(0xFF3A1010) : Colors.red[50]),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
@@ -1123,8 +1171,12 @@ class MapScreenState extends State<MapScreen> {
                           height: 8,
                           decoration: BoxDecoration(
                             color: isOpen
-                                ? (isDark ? const Color(0xFF66BB6A) : Colors.green)
-                                : (isDark ? const Color(0xFFE57373) : Colors.red),
+                                ? (isDark
+                                      ? const Color(0xFF66BB6A)
+                                      : Colors.green)
+                                : (isDark
+                                      ? const Color(0xFFE57373)
+                                      : Colors.red),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -1153,9 +1205,15 @@ class MapScreenState extends State<MapScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF2A2000) : const Color(0xFFFFF8E1),
+                        color: isDark
+                            ? const Color(0xFF2A2000)
+                            : const Color(0xFFFFF8E1),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isDark ? const Color(0xFFD4AA2C).withOpacity(0.4) : const Color(0xFFFFE082)),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFFD4AA2C).withOpacity(0.4)
+                              : const Color(0xFFFFE082),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1171,7 +1229,9 @@ class MapScreenState extends State<MapScreen> {
                                 ? '${rating.toStringAsFixed(1)} ($totalRatings)'
                                 : 'No ratings',
                             style: TextStyle(
-                              color: isDark ? const Color(0xFFD4AA2C) : const Color(0xFF8C6D1F),
+                              color: isDark
+                                  ? const Color(0xFFD4AA2C)
+                                  : const Color(0xFF8C6D1F),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1185,9 +1245,15 @@ class MapScreenState extends State<MapScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1B3A20) : const Color(0xFFE8F5E9),
+                        color: isDark
+                            ? const Color(0xFF1B3A20)
+                            : const Color(0xFFE8F5E9),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isDark ? const Color(0xFF388E3C) : const Color(0xFFC8E6C9)),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF388E3C)
+                              : const Color(0xFFC8E6C9),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1195,13 +1261,17 @@ class MapScreenState extends State<MapScreen> {
                           Icon(
                             chargingTypeIcon,
                             size: 14,
-                            color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
+                            color: isDark
+                                ? const Color(0xFF81C784)
+                                : const Color(0xFF2E7D32),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             chargingType,
                             style: TextStyle(
-                              color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
+                              color: isDark
+                                  ? const Color(0xFF81C784)
+                                  : const Color(0xFF2E7D32),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1302,7 +1372,9 @@ class MapScreenState extends State<MapScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF0D2744) : Colors.blue[50],
+                              color: isDark
+                                  ? const Color(0xFF0D2744)
+                                  : Colors.blue[50],
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: Colors.blue.withOpacity(0.3),
@@ -1338,7 +1410,9 @@ class MapScreenState extends State<MapScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF1B3A20) : Colors.green[50],
+                              color: isDark
+                                  ? const Color(0xFF1B3A20)
+                                  : Colors.green[50],
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: Colors.green.withOpacity(0.3),
@@ -1374,7 +1448,11 @@ class MapScreenState extends State<MapScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.place, color: isDark ? Colors.grey[500] : Colors.grey[700], size: 20),
+                    Icon(
+                      Icons.place,
+                      color: isDark ? Colors.grey[500] : Colors.grey[700],
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -2410,6 +2488,7 @@ class MapScreenState extends State<MapScreen> {
         children: [
           // Google Map
           GoogleMap(
+            style: isDark ? _darkMapStyle : _lightMapStyle,
             initialCameraPosition: const CameraPosition(
               target: LatLng(11.1271, 78.6569),
               zoom: 7,
@@ -2423,7 +2502,6 @@ class MapScreenState extends State<MapScreen> {
             compassEnabled: true,
             onMapCreated: (controller) {
               mapController = controller;
-              if (_isDark) controller.setMapStyle(_darkMapStyle);
             },
             onTap: (_) {
               // Clear selected station when tapping map
@@ -2463,11 +2541,21 @@ class MapScreenState extends State<MapScreen> {
                     focusNode: searchFocusNode,
                     decoration: InputDecoration(
                       hintText: 'Search stations or city...',
-                      hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[500]),
-                      prefixIcon: Icon(Icons.search, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                      hintStyle: TextStyle(
+                        color: isDark ? Colors.grey[500] : Colors.grey[500],
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      ),
                       suffixIcon: searchController.text.isNotEmpty
                           ? IconButton(
-                              icon: Icon(Icons.close, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                              icon: Icon(
+                                Icons.close,
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
+                              ),
                               onPressed: () {
                                 searchController.clear();
                                 searchFocusNode.unfocus();
@@ -2487,7 +2575,11 @@ class MapScreenState extends State<MapScreen> {
 
                   // Search Results List (Only shown when searching)
                   if (_showSearchResults) ...[
-                    Divider(height: 1, thickness: 1, color: isDark ? const Color(0xFF2A2A2A) : null),
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: isDark ? const Color(0xFF2A2A2A) : null,
+                    ),
                     Expanded(
                       child: _searchResults.isEmpty
                           ? Center(
@@ -2536,7 +2628,9 @@ class MapScreenState extends State<MapScreen> {
                                     decoration: BoxDecoration(
                                       border: Border(
                                         bottom: BorderSide(
-                                          color: isDark ? const Color(0xFF2A2A2A) : Colors.grey[200]!,
+                                          color: isDark
+                                              ? const Color(0xFF2A2A2A)
+                                              : Colors.grey[200]!,
                                           width: 0.5,
                                         ),
                                       ),
@@ -2583,7 +2677,9 @@ class MapScreenState extends State<MapScreen> {
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.w600,
                                                   fontSize: 15,
-                                                  color: isDark ? Colors.white : null,
+                                                  color: isDark
+                                                      ? Colors.white
+                                                      : null,
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -2600,7 +2696,9 @@ class MapScreenState extends State<MapScreen> {
                                                           ''),
                                                 style: TextStyle(
                                                   fontSize: 12,
-                                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                                  color: isDark
+                                                      ? Colors.grey[400]
+                                                      : Colors.grey[600],
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -2776,24 +2874,32 @@ class MapScreenState extends State<MapScreen> {
 
   static const String _darkMapStyle = '''
 [
-  {"elementType": "geometry", "stylers": [{"color": "#242f3e"}]},
-  {"elementType": "labels.text.stroke", "stylers": [{"color": "#242f3e"}]},
-  {"elementType": "labels.text.fill", "stylers": [{"color": "#746855"}]},
-  {"featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{"color": "#d59563"}]},
-  {"featureType": "poi", "elementType": "labels.text.fill", "stylers": [{"color": "#d59563"}]},
-  {"featureType": "poi.park", "elementType": "geometry", "stylers": [{"color": "#263c3f"}]},
-  {"featureType": "poi.park", "elementType": "labels.text.fill", "stylers": [{"color": "#6b9a76"}]},
-  {"featureType": "road", "elementType": "geometry", "stylers": [{"color": "#38414e"}]},
-  {"featureType": "road", "elementType": "geometry.stroke", "stylers": [{"color": "#212a37"}]},
-  {"featureType": "road", "elementType": "labels.text.fill", "stylers": [{"color": "#9ca5b3"}]},
-  {"featureType": "road.highway", "elementType": "geometry", "stylers": [{"color": "#746855"}]},
-  {"featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{"color": "#1f2835"}]},
-  {"featureType": "road.highway", "elementType": "labels.text.fill", "stylers": [{"color": "#f3d19c"}]},
-  {"featureType": "transit", "elementType": "geometry", "stylers": [{"color": "#2f3948"}]},
-  {"featureType": "transit.station", "elementType": "labels.text.fill", "stylers": [{"color": "#d59563"}]},
-  {"featureType": "water", "elementType": "geometry", "stylers": [{"color": "#17263c"}]},
-  {"featureType": "water", "elementType": "labels.text.fill", "stylers": [{"color": "#515c6d"}]},
-  {"featureType": "water", "elementType": "labels.text.stroke", "stylers": [{"color": "#17263c"}]}
+  {"elementType":"geometry","stylers":[{"color":"#242f3e"}]},
+  {"elementType":"labels.text.stroke","stylers":[{"color":"#242f3e"}]},
+  {"elementType":"labels.text.fill","stylers":[{"color":"#746855"}]},
+  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},
+  {"featureType":"poi","elementType":"labels","stylers":[{"visibility":"off"}]},
+  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#263c3f"}]},
+  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#38414e"}]},
+  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#212a37"}]},
+  {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#9ca5b3"}]},
+  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#746855"}]},
+  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#1f2835"}]},
+  {"featureType":"road.highway","elementType":"labels.text.fill","stylers":[{"color":"#f3d19c"}]},
+  {"featureType":"transit","elementType":"labels","stylers":[{"visibility":"off"}]},
+  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#2f3948"}]},
+  {"featureType":"transit.station","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},
+  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#17263c"}]},
+  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#515c6d"}]},
+  {"featureType":"water","elementType":"labels.text.stroke","stylers":[{"color":"#17263c"}]}
+]
+''';
+
+  // Light map style — hides POI & transit clutter (matches NavigationScreen)
+  static const String _lightMapStyle = '''
+[
+  {"featureType":"poi","elementType":"labels","stylers":[{"visibility":"off"}]},
+  {"featureType":"transit","elementType":"labels","stylers":[{"visibility":"off"}]}
 ]
 ''';
 }

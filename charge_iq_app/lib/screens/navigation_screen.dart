@@ -88,13 +88,6 @@ class _NavigationScreenState extends State<NavigationScreen>
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    _mapController?.setMapStyle(dark ? _mapStyleDark : _mapStyleLight);
-  }
-
-  @override
   void dispose() {
     _bottomSheetController.dispose();
     _fabController.dispose();
@@ -531,14 +524,13 @@ class _NavigationScreenState extends State<NavigationScreen>
           children: [
           // Full-screen Google Map
           GoogleMap(
+            style: isDark ? _mapStyleDark : _mapStyleLight,
             initialCameraPosition: CameraPosition(
               target: _startLatLng ?? const LatLng(20.5937, 78.9629),
               zoom: 5,
             ),
-            onMapCreated: (controller) {
+            onMapCreated: (controller) async {
               _mapController = controller;
-              controller.setMapStyle(
-                  isDark ? _mapStyleDark : _mapStyleLight);
             },
             markers: _markers,
             polylines: _polylines,

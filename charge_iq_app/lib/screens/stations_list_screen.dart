@@ -598,7 +598,9 @@ class _StationsListScreenState extends State<StationsListScreen>
     return score;
   }
 
-  Map<String, dynamic>? _bestScoredStation(List<Map<String, dynamic>> stations) {
+  Map<String, dynamic>? _bestScoredStation(
+    List<Map<String, dynamic>> stations,
+  ) {
     if (stations.isEmpty) return null;
 
     final openStations = stations.where((s) => s['isOpen'] == true).toList();
@@ -761,17 +763,68 @@ class _StationsListScreenState extends State<StationsListScreen>
     if (selectedType != null && selectedType.isNotEmpty) return selectedType;
 
     final name = station['name']?.toString().toLowerCase() ?? '';
-    if (name.contains('ccs2') || name.contains('ccs')) return 'CCS2';
-    if (name.contains('chademo')) return 'CHAdeMO';
-    if (name.contains('gb/t') || name.contains('gbt')) return 'GB/T';
-    if (name.contains('type 2') || name.contains('type2')) return 'Type 2';
-    if (name.contains('tesla') || name.contains('supercharger')) return 'CCS2';
+    final vicinity = (station['vicinity'] ?? '').toString().toLowerCase();
+    final combined = '$name $vicinity';
 
-    final types = (station['types'] as List<dynamic>? ?? const <dynamic>[])
-        .map((e) => e.toString().toLowerCase())
-        .toList();
-    if (types.contains('electric_vehicle_charging_station')) return 'Type 2';
-    return 'Type 2';
+    // Specific connector types mentioned in the name
+    if (combined.contains('ccs2') || combined.contains('ccs-2')) return 'CCS2';
+    if (combined.contains('ccs1') || combined.contains('ccs-1')) return 'CCS1';
+    if (combined.contains('ccs')) return 'CCS2';
+    if (combined.contains('chademo')) return 'CHAdeMO';
+    if (combined.contains('gb/t') || combined.contains('gbt')) return 'GB/T';
+    if (combined.contains('type 2') ||
+        combined.contains('type2') ||
+        combined.contains('type-2'))
+      return 'Type 2';
+    if (combined.contains('type 1') ||
+        combined.contains('type1') ||
+        combined.contains('type-1'))
+      return 'Type 1';
+
+    // Tesla / Supercharger → CCS2 (India uses CCS2)
+    if (combined.contains('supercharger') || combined.contains('tesla'))
+      return 'CCS2';
+
+    // DC fast charging keywords
+    if (combined.contains('dc fast') ||
+        combined.contains('dcfc') ||
+        combined.contains('dc charger'))
+      return 'CCS2';
+
+    // Common Indian & global EV networks → infer their typical connector
+    if (combined.contains('tata power') || combined.contains('tata ev'))
+      return 'CCS2';
+    if (combined.contains('ather') || combined.contains('ather grid'))
+      return 'AC';
+    if (combined.contains('eesl') || combined.contains('energy efficiency'))
+      return 'CCS2';
+    if (combined.contains('fortum') || combined.contains('charge&drive'))
+      return 'CCS2';
+    if (combined.contains('statiq')) return 'CCS2';
+    if (combined.contains('chargezone') || combined.contains('charge zone'))
+      return 'CCS2';
+    if (combined.contains('volttic') ||
+        combined.contains('jio-bp') ||
+        combined.contains('jiobp'))
+      return 'CCS2';
+    if (combined.contains('chargepoint')) return 'CCS2';
+    if (combined.contains('electrify') || combined.contains('evgo'))
+      return 'CCS2';
+    if (combined.contains('blink')) return 'CCS2';
+    if (combined.contains('kazam') ||
+        combined.contains('bolt.earth') ||
+        combined.contains('boltearth'))
+      return 'CCS2';
+
+    // AC / slow charging
+    if (combined.contains('ac charger') || combined.contains('slow charg'))
+      return 'AC';
+
+    // Generic "fast" keyword
+    if (combined.contains('fast charg') || combined.contains('rapid'))
+      return 'DC Fast';
+
+    return 'CCS2';
   }
 
   IconData _chargingTypeIcon(String type) {
@@ -781,6 +834,9 @@ class _StationsListScreenState extends State<StationsListScreen>
     if (value.contains('gb/t') || value.contains('gbt')) {
       return Icons.power_input_rounded;
     }
+    if (value.contains('dcfast') || value.contains('fast'))
+      return Icons.flash_on_rounded;
+    if (value == 'ac') return Icons.power_outlined;
     return Icons.ev_station_rounded;
   }
 
@@ -905,8 +961,12 @@ class _StationsListScreenState extends State<StationsListScreen>
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(6),
                         color: Color.lerp(
-                          isDark ? const Color(0xFF252525) : const Color(0xFFF5F5F5),
-                          isDark ? const Color(0xFF2F2F2F) : const Color(0xFFEEEEEE),
+                          isDark
+                              ? const Color(0xFF252525)
+                              : const Color(0xFFF5F5F5),
+                          isDark
+                              ? const Color(0xFF2F2F2F)
+                              : const Color(0xFFEEEEEE),
                           shimmer,
                         ),
                       ),
@@ -1223,9 +1283,13 @@ class _StationsListScreenState extends State<StationsListScreen>
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white.withValues(alpha: 0.72),
+          color: isDark
+              ? const Color(0xFF1E1E1E)
+              : Colors.white.withValues(alpha: 0.72),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFE0E6F0)),
+          border: Border.all(
+            color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFE0E6F0),
+          ),
           boxShadow: [
             BoxShadow(
               color: _black(0.03),
@@ -1237,7 +1301,10 @@ class _StationsListScreenState extends State<StationsListScreen>
         child: TextField(
           controller: searchController,
           onChanged: _searchStations,
-          style: TextStyle(fontSize: 14, color: isDark ? Colors.white : _textDark),
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? Colors.white : _textDark,
+          ),
           decoration: InputDecoration(
             hintText: 'Search stations or areas...',
             hintStyle: const TextStyle(color: Color(0xFFB0BEC5), fontSize: 14),
@@ -1324,10 +1391,14 @@ class _StationsListScreenState extends State<StationsListScreen>
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? color : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
+          color: selected
+              ? color
+              : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? color : (isDark ? const Color(0xFF3A3A3A) : const Color(0xFFDDE3EE)),
+            color: selected
+                ? color
+                : (isDark ? const Color(0xFF3A3A3A) : const Color(0xFFDDE3EE)),
             width: 1.2,
           ),
           boxShadow: selected
@@ -1350,7 +1421,9 @@ class _StationsListScreenState extends State<StationsListScreen>
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : (isDark ? Colors.grey[400] : const Color(0xFF546E7A)),
+                color: selected
+                    ? Colors.white
+                    : (isDark ? Colors.grey[400] : const Color(0xFF546E7A)),
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
@@ -1359,7 +1432,11 @@ class _StationsListScreenState extends State<StationsListScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
-                color: selected ? _white(0.22) : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F4FB)),
+                color: selected
+                    ? _white(0.22)
+                    : (isDark
+                          ? const Color(0xFF2A2A2A)
+                          : const Color(0xFFF0F4FB)),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -1367,7 +1444,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: selected ? Colors.white : (isDark ? Colors.grey[400] : const Color(0xFF78909C)),
+                  color: selected
+                      ? Colors.white
+                      : (isDark ? Colors.grey[400] : const Color(0xFF78909C)),
                 ),
               ),
             ),
@@ -1424,7 +1503,9 @@ class _StationsListScreenState extends State<StationsListScreen>
   Widget _buildList() {
     final displayStations = _stationsForDisplay();
     final bestStation = _bestScoredStation(displayStations);
-    final bestStationId = bestStation != null ? _stationPlaceId(bestStation) : '';
+    final bestStationId = bestStation != null
+        ? _stationPlaceId(bestStation)
+        : '';
 
     return ListView(
       controller: _listScrollController,
@@ -1479,7 +1560,9 @@ class _StationsListScreenState extends State<StationsListScreen>
     final chargingTypeIcon = _chargingTypeIcon(chargingType);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bestBg = isDark ? const Color(0xFF3D2600) : const Color(0xFFFFF3E0);
-    final bestBorder = isDark ? const Color(0xFFFF8C00) : const Color(0xFFFFB74D);
+    final bestBorder = isDark
+        ? const Color(0xFFFF8C00)
+        : const Color(0xFFFFB74D);
 
     final statusBg = isOpen
         ? (isDark ? const Color(0xFF1B3A1F) : const Color(0xFFE8F5E9))
@@ -1502,7 +1585,11 @@ class _StationsListScreenState extends State<StationsListScreen>
           border: Border.all(
             color: isBestNearby
                 ? bestBorder
-                : (isRec ? _green(0.35) : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE8EDF5))),
+                : (isRec
+                      ? _green(0.35)
+                      : (isDark
+                            ? const Color(0xFF2A2A2A)
+                            : const Color(0xFFE8EDF5))),
             width: isBestNearby ? 1.8 : (isRec ? 1.5 : 1),
           ),
           boxShadow: [
@@ -1520,7 +1607,10 @@ class _StationsListScreenState extends State<StationsListScreen>
               Container(
                 width: double.infinity,
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: bestBg,
                   borderRadius: BorderRadius.circular(10),
@@ -1645,13 +1735,17 @@ class _StationsListScreenState extends State<StationsListScreen>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1565C0).withValues(alpha: 0.25) : _blue(0.08),
+                        color: isDark
+                            ? const Color(0xFF1565C0).withValues(alpha: 0.25)
+                            : _blue(0.08),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         distStr,
                         style: TextStyle(
-                          color: isDark ? const Color(0xFF64B5F6) : _primaryBlue,
+                          color: isDark
+                              ? const Color(0xFF64B5F6)
+                              : _primaryBlue,
                           fontWeight: FontWeight.bold,
                           fontSize: 12.5,
                         ),
@@ -1682,11 +1776,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.circle_rounded,
-                        size: 8,
-                        color: statusDot,
-                      ),
+                      Icon(Icons.circle_rounded, size: 8, color: statusDot),
                       const SizedBox(width: 5),
                       Text(
                         isOpen ? 'Open' : 'Closed',
@@ -1706,7 +1796,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2A2000) : const Color(0xFFFFF8E1),
+                    color: isDark
+                        ? const Color(0xFF2A2000)
+                        : const Color(0xFFFFF8E1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -1724,7 +1816,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                             : 'No ratings',
                         style: TextStyle(
                           fontSize: 11.5,
-                          color: isDark ? const Color(0xFFD4AA2C) : const Color(0xFF8C6D1F),
+                          color: isDark
+                              ? const Color(0xFFD4AA2C)
+                              : const Color(0xFF8C6D1F),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1743,7 +1837,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF0D2744) : const Color(0xFFE3F2FD),
+                      color: isDark
+                          ? const Color(0xFF0D2744)
+                          : const Color(0xFFE3F2FD),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
@@ -1755,7 +1851,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                                 ? Icons.sync_rounded
                                 : Icons.navigation_rounded,
                             size: 14,
-                            color: isDark ? const Color(0xFF64B5F6) : _primaryBlue,
+                            color: isDark
+                                ? const Color(0xFF64B5F6)
+                                : _primaryBlue,
                           ),
                           const SizedBox(width: 6),
                           Flexible(
@@ -1765,7 +1863,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: isDark ? const Color(0xFF64B5F6) : _primaryBlue,
+                                color: isDark
+                                    ? const Color(0xFF64B5F6)
+                                    : _primaryBlue,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 11.5,
                               ),
@@ -1784,7 +1884,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1B3A20) : const Color(0xFFE8F5E9),
+                      color: isDark
+                          ? const Color(0xFF1B3A20)
+                          : const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
@@ -1794,7 +1896,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                           Icon(
                             chargingTypeIcon,
                             size: 14,
-                            color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
+                            color: isDark
+                                ? const Color(0xFF81C784)
+                                : const Color(0xFF2E7D32),
                           ),
                           const SizedBox(width: 6),
                           Flexible(
@@ -1804,7 +1908,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
+                                color: isDark
+                                    ? const Color(0xFF81C784)
+                                    : const Color(0xFF2E7D32),
                                 fontWeight: FontWeight.w600,
                                 fontSize: 11.5,
                               ),
@@ -1857,7 +1963,9 @@ class _StationsListScreenState extends State<StationsListScreen>
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F4FB),
+                color: isDark
+                    ? const Color(0xFF2A2A2A)
+                    : const Color(0xFFF0F4FB),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 34, color: const Color(0xFFCDD4E0)),
@@ -1967,7 +2075,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                 width: 32,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFDDE3EE),
+                  color: isDark
+                      ? const Color(0xFF3A3A3A)
+                      : const Color(0xFFDDE3EE),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1983,7 +2093,10 @@ class _StationsListScreenState extends State<StationsListScreen>
                 ),
               ),
             ),
-            Divider(height: 1, color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F4FB)),
+            Divider(
+              height: 1,
+              color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F4FB),
+            ),
             ...userVehicles.map((vehicle) {
               final isSel = selectedVehicle?.id == vehicle.id;
               return ListTile(
@@ -1996,7 +2109,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                   decoration: BoxDecoration(
                     color: isSel
                         ? const Color(0xFF1A1A2E)
-                        : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F4FB)),
+                        : (isDark
+                              ? const Color(0xFF2A2A2A)
+                              : const Color(0xFFF0F4FB)),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -2203,13 +2318,21 @@ class _StationsListScreenState extends State<StationsListScreen>
                         ),
                         decoration: BoxDecoration(
                           color: isOpen
-                              ? (isDark ? const Color(0xFF1B3A1F) : const Color(0xFFE8F5E9))
-                              : (isDark ? const Color(0xFF3A1010) : const Color(0xFFFFEBEE)),
+                              ? (isDark
+                                    ? const Color(0xFF1B3A1F)
+                                    : const Color(0xFFE8F5E9))
+                              : (isDark
+                                    ? const Color(0xFF3A1010)
+                                    : const Color(0xFFFFEBEE)),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: isOpen
-                                ? (isDark ? const Color(0xFF388E3C) : const Color(0xFFA5D6A7))
-                                : (isDark ? const Color(0xFFE57373) : const Color(0xFFEF9A9A)),
+                                ? (isDark
+                                      ? const Color(0xFF388E3C)
+                                      : const Color(0xFFA5D6A7))
+                                : (isDark
+                                      ? const Color(0xFFE57373)
+                                      : const Color(0xFFEF9A9A)),
                           ),
                         ),
                         child: Row(
@@ -2219,16 +2342,24 @@ class _StationsListScreenState extends State<StationsListScreen>
                               Icons.circle_rounded,
                               size: 8,
                               color: isOpen
-                                  ? (isDark ? const Color(0xFF66BB6A) : const Color(0xFF43A047))
-                                  : (isDark ? const Color(0xFFE57373) : const Color(0xFFE53935)),
+                                  ? (isDark
+                                        ? const Color(0xFF66BB6A)
+                                        : const Color(0xFF43A047))
+                                  : (isDark
+                                        ? const Color(0xFFE57373)
+                                        : const Color(0xFFE53935)),
                             ),
                             const SizedBox(width: 5),
                             Text(
                               isOpen ? 'Open Now' : 'Closed',
                               style: TextStyle(
                                 color: isOpen
-                                    ? (isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32))
-                                    : (isDark ? const Color(0xFFEF9A9A) : const Color(0xFFC62828)),
+                                    ? (isDark
+                                          ? const Color(0xFF81C784)
+                                          : const Color(0xFF2E7D32))
+                                    : (isDark
+                                          ? const Color(0xFFEF9A9A)
+                                          : const Color(0xFFC62828)),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -2269,23 +2400,33 @@ class _StationsListScreenState extends State<StationsListScreen>
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1B3A20) : const Color(0xFFE8F5E9),
+                      color: isDark
+                          ? const Color(0xFF1B3A20)
+                          : const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: isDark ? const Color(0xFF388E3C) : const Color(0xFFC8E6C9)),
+                      border: Border.all(
+                        color: isDark
+                            ? const Color(0xFF388E3C)
+                            : const Color(0xFFC8E6C9),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           chargingTypeIcon,
-                          color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
+                          color: isDark
+                              ? const Color(0xFF81C784)
+                              : const Color(0xFF2E7D32),
                           size: 14,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           chargingType,
                           style: TextStyle(
-                            color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
+                            color: isDark
+                                ? const Color(0xFF81C784)
+                                : const Color(0xFF2E7D32),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -2308,7 +2449,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                           location,
                           style: TextStyle(
                             fontSize: 13,
-                            color: isDark ? Colors.grey[400] : const Color(0xFF546E7A),
+                            color: isDark
+                                ? Colors.grey[400]
+                                : const Color(0xFF546E7A),
                             height: 1.4,
                           ),
                         ),
