@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:charge_iq_app/screens/google_nav_screen.dart';
+import 'package:charge_iq_app/utils/google_map_styles.dart';
 
 class NavigationScreen extends StatefulWidget {
   final String startLocation;
@@ -1740,35 +1741,8 @@ class _NavigationScreenState extends State<NavigationScreen>
   }
 
   // Light map style — hides POI & transit clutter
-  static const String _mapStyleLight = '''
-[
-  {"featureType":"poi","elementType":"labels","stylers":[{"visibility":"off"}]},
-  {"featureType":"transit","elementType":"labels","stylers":[{"visibility":"off"}]}
-]
-''';
+  static const String _mapStyleLight = googleMapStyleLightDecluttered;
 
-  // Google Night Mode map style
-  static const String _mapStyleDark = '''
-[
-  {"elementType":"geometry","stylers":[{"color":"#242f3e"}]},
-  {"elementType":"labels.text.stroke","stylers":[{"color":"#242f3e"}]},
-  {"elementType":"labels.text.fill","stylers":[{"color":"#746855"}]},
-  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},
-  {"featureType":"poi","elementType":"labels","stylers":[{"visibility":"off"}]},
-  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#263c3f"}]},
-  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#38414e"}]},
-  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#212a37"}]},
-  {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#9ca5b3"}]},
-  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#746855"}]},
-  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#1f2835"}]},
-  {"featureType":"road.highway","elementType":"labels.text.fill","stylers":[{"color":"#f3d19c"}]},
-  {"featureType":"transit","elementType":"labels","stylers":[{"visibility":"off"}]},
-  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#2f3948"}]},
-  {"featureType":"transit.station","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},
-  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#17263c"}]},
-  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#515c6d"}]},
-  {"featureType":"water","elementType":"labels.text.stroke","stylers":[{"color":"#17263c"}]}
-]
-''';
+  static const String _mapStyleDark = googleMapStyleDarkNightMode;
 }
 

@@ -13,6 +13,7 @@ import 'dart:math' show cos, sqrt, asin;
 import 'package:charge_iq_app/screens/google_nav_screen.dart';
 import 'package:charge_iq_app/services/gemini_service.dart';
 import 'package:charge_iq_app/services/saved_location_service.dart';
+import 'package:charge_iq_app/utils/google_map_styles.dart';
 import '../utils/app_snackbar.dart';
 
 class MapScreen extends StatefulWidget {
@@ -59,6 +60,19 @@ class MapScreenState extends State<MapScreen> {
   // Quick Charge AI setting
   bool useAIForQuickCharge = true;
 
+  Future<void> _applyMapStyle([GoogleMapController? controller]) async {
+    final ctrl = controller ?? mapController;
+    if (ctrl == null) return;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final style = isDark ? _darkMapStyle : _lightMapStyle;
+    try {
+      await ctrl.setMapStyle(style);
+    } catch (e) {
+      debugPrint('MapScreen: failed to set map style: $e');
+    }
+  }
+
   // Cache settings
   static const String CACHE_KEY = 'map_ev_stations_cache';
   static const String CACHE_TIMESTAMP_KEY = 'map_ev_stations_timestamp';
@@ -96,6 +110,17 @@ class MapScreenState extends State<MapScreen> {
         useAIForQuickCharge = prefs.getBool('quick_charge_use_ai') ?? true;
       });
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Re-apply after rebuilds (theme changes, hot reload, etc.).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _applyMapStyle();
+      Future.delayed(const Duration(milliseconds: 250), _applyMapStyle);
+    });
   }
 
   @override
@@ -2503,6 +2528,10 @@ class MapScreenState extends State<MapScreen> {
             compassEnabled: true,
             onMapCreated: (controller) {
               mapController = controller;
+              _applyMapStyle(controller);
+              Future.delayed(const Duration(milliseconds: 250), () {
+                _applyMapStyle(controller);
+              });
             },
             onTap: (_) {
               // Clear selected station when tapping map
@@ -2873,35 +2902,8 @@ class MapScreenState extends State<MapScreen> {
     );
   }
 
-  static const String _darkMapStyle = '''
-[
-  {"elementType":"geometry","stylers":[{"color":"#242f3e"}]},
-  {"elementType":"labels.text.stroke","stylers":[{"color":"#242f3e"}]},
-  {"elementType":"labels.text.fill","stylers":[{"color":"#746855"}]},
-  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},
-  {"featureType":"poi","elementType":"labels","stylers":[{"visibility":"off"}]},
-  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#263c3f"}]},
-  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#38414e"}]},
-  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#212a37"}]},
-  {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#9ca5b3"}]},
-  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#746855"}]},
-  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#1f2835"}]},
-  {"featureType":"road.highway","elementType":"labels.text.fill","stylers":[{"color":"#f3d19c"}]},
-  {"featureType":"transit","elementType":"labels","stylers":[{"visibility":"off"}]},
-  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#2f3948"}]},
-  {"featureType":"transit.station","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},
-  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#17263c"}]},
-  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#515c6d"}]},
-  {"featureType":"water","elementType":"labels.text.stroke","stylers":[{"color":"#17263c"}]}
-]
-''';
+  static const String _darkMapStyle = googleMapStyleDarkNightMode;
 
-  // Light map style — hides POI & transit clutter (matches NavigationScreen)
-  static const String _lightMapStyle = '''
-[
-  {"featureType":"poi","elementType":"labels","stylers":[{"visibility":"off"}]},
-  {"featureType":"transit","elementType":"labels","stylers":[{"visibility":"off"}]}
-]
-''';
+  static const String _lightMapStyle = googleMapStyleLightDecluttered;
 }
 

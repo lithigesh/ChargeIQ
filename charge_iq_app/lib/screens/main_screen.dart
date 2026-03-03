@@ -22,6 +22,8 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool _fabLoading = false;
 
+  static const Color _accentGreen = Color(0xFF34A853);
+
   final GlobalKey<MapScreenState> _mapKey = GlobalKey<MapScreenState>();
 
   late final List<Widget> _widgetOptions;
@@ -119,7 +121,7 @@ class _MainScreenState extends State<MainScreen> {
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setBool('quick_charge_use_ai', val);
                         },
-                        activeColor: const Color(0xFF00D26A),
+                        activeColor: _accentGreen,
                       ),
                     ],
                   ),
@@ -279,7 +281,7 @@ class _MainScreenState extends State<MainScreen> {
                             if (mounted) setState(() => _fabLoading = false);
                           }
                         },
-                  backgroundColor: const Color(0xFF00C853),
+                  backgroundColor: _accentGreen,
                   elevation: 4,
                   shape: const CircleBorder(),
                   child: _fabLoading
@@ -330,7 +332,7 @@ class _NavItem extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final inactiveColor =
         isDark ? Colors.grey.shade400 : Colors.grey.shade500;
-    const activeColor = Color(0xFF00C853);
+    const activeColor = Color(0xFF34A853);
 
     return GestureDetector(
       onTap: onTap,
@@ -348,7 +350,7 @@ class _NavItem extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: selected
-                    ? activeColor.withValues(alpha: 0.1)
+                    ? activeColor.withValues(alpha: 0.08)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
               ),
