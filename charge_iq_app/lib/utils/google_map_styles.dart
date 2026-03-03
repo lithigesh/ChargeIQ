@@ -10,25 +10,33 @@ const String googleMapStyleLightDecluttered = '''
 ''';
 
 /// Google Night Mode map style (JSON) used across the app.
+/// Includes explicit landscape/terrain rules so natural terrain areas
+/// (mountains, forests, hills) do not fall back to the default teal-green.
 const String googleMapStyleDarkNightMode = '''
 [
-  {"elementType":"geometry","stylers":[{"color":"#242f3e"}]},
-  {"elementType":"labels.text.stroke","stylers":[{"color":"#242f3e"}]},
-  {"elementType":"labels.text.fill","stylers":[{"color":"#746855"}]},
-  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},
+  {"elementType":"geometry","stylers":[{"color":"#1d2535"}]},
+  {"elementType":"labels.text.stroke","stylers":[{"color":"#1d2535"}]},
+  {"elementType":"labels.text.fill","stylers":[{"color":"#8899aa"}]},
+  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#9ab8d4"}]},
+  {"featureType":"landscape","elementType":"geometry","stylers":[{"color":"#1d2535"}]},
+  {"featureType":"landscape","elementType":"geometry.fill","stylers":[{"color":"#1d2535"}]},
+  {"featureType":"landscape.natural","elementType":"geometry","stylers":[{"color":"#22303f"}]},
+  {"featureType":"landscape.natural","elementType":"geometry.fill","stylers":[{"color":"#22303f"}]},
+  {"featureType":"landscape.man_made","elementType":"geometry","stylers":[{"color":"#1d2535"}]},
   {"featureType":"poi","elementType":"labels","stylers":[{"visibility":"off"}]},
-  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#263c3f"}]},
-  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#38414e"}]},
-  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#212a37"}]},
-  {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#9ca5b3"}]},
-  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#746855"}]},
-  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#1f2835"}]},
-  {"featureType":"road.highway","elementType":"labels.text.fill","stylers":[{"color":"#f3d19c"}]},
+  {"featureType":"poi","elementType":"geometry","stylers":[{"color":"#1e3040"}]},
+  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#1a3030"}]},
+  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#2e3a4e"}]},
+  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#18202c"}]},
+  {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#8899aa"}]},
+  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#3b5068"}]},
+  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#1a2535"}]},
+  {"featureType":"road.highway","elementType":"labels.text.fill","stylers":[{"color":"#b0cce0"}]},
   {"featureType":"transit","elementType":"labels","stylers":[{"visibility":"off"}]},
-  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#2f3948"}]},
-  {"featureType":"transit.station","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},
-  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#17263c"}]},
-  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#515c6d"}]},
-  {"featureType":"water","elementType":"labels.text.stroke","stylers":[{"color":"#17263c"}]}
+  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#253040"}]},
+  {"featureType":"transit.station","elementType":"labels.text.fill","stylers":[{"color":"#7aaec8"}]},
+  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#0f1d2e"}]},
+  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#3d5a70"}]},
+  {"featureType":"water","elementType":"labels.text.stroke","stylers":[{"color":"#0f1d2e"}]}
 ]
 ''';

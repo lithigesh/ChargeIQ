@@ -526,6 +526,7 @@ class _NavigationScreenState extends State<NavigationScreen>
           children: [
           // Full-screen Google Map
           GoogleMap(
+            mapType: MapType.normal,
             style: isDark ? _mapStyleDark : _mapStyleLight,
             initialCameraPosition: CameraPosition(
               target: _startLatLng ?? const LatLng(20.5937, 78.9629),
