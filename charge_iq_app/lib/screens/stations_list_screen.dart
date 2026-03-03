@@ -1673,13 +1673,10 @@ class _StationsListScreenState extends State<StationsListScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: statusDot,
-                          shape: BoxShape.circle,
-                        ),
+                      Icon(
+                        Icons.circle_rounded,
+                        size: 8,
+                        color: statusDot,
                       ),
                       const SizedBox(width: 5),
                       Text(
@@ -2204,15 +2201,12 @@ class _StationsListScreenState extends State<StationsListScreen>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: isOpen
-                                    ? const Color(0xFF43A047)
-                                    : const Color(0xFFE53935),
-                                shape: BoxShape.circle,
-                              ),
+                            Icon(
+                              Icons.circle_rounded,
+                              size: 8,
+                              color: isOpen
+                                  ? const Color(0xFF43A047)
+                                  : const Color(0xFFE53935),
                             ),
                             const SizedBox(width: 5),
                             Text(
