@@ -60,19 +60,6 @@ class MapScreenState extends State<MapScreen> {
   // Quick Charge AI setting
   bool useAIForQuickCharge = true;
 
-  Future<void> _applyMapStyle([GoogleMapController? controller]) async {
-    final ctrl = controller ?? mapController;
-    if (ctrl == null) return;
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final style = isDark ? _darkMapStyle : _lightMapStyle;
-    try {
-      await ctrl.setMapStyle(style);
-    } catch (e) {
-      debugPrint('MapScreen: failed to set map style: $e');
-    }
-  }
-
   // Cache settings
   static const String CACHE_KEY = 'map_ev_stations_cache';
   static const String CACHE_TIMESTAMP_KEY = 'map_ev_stations_timestamp';
@@ -110,17 +97,6 @@ class MapScreenState extends State<MapScreen> {
         useAIForQuickCharge = prefs.getBool('quick_charge_use_ai') ?? true;
       });
     }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // Re-apply after rebuilds (theme changes, hot reload, etc.).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _applyMapStyle();
-      Future.delayed(const Duration(milliseconds: 250), _applyMapStyle);
-    });
   }
 
   @override
@@ -2514,6 +2490,7 @@ class MapScreenState extends State<MapScreen> {
         children: [
           // Google Map
           GoogleMap(
+            mapType: MapType.normal,
             style: isDark ? _darkMapStyle : _lightMapStyle,
             initialCameraPosition: const CameraPosition(
               target: LatLng(11.1271, 78.6569),
@@ -2528,10 +2505,6 @@ class MapScreenState extends State<MapScreen> {
             compassEnabled: true,
             onMapCreated: (controller) {
               mapController = controller;
-              _applyMapStyle(controller);
-              Future.delayed(const Duration(milliseconds: 250), () {
-                _applyMapStyle(controller);
-              });
             },
             onTap: (_) {
               // Clear selected station when tapping map
