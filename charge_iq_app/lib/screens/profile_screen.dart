@@ -435,6 +435,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         }
                       },
                     ),
+                  if (_user?.email != null)
+                    _buildSettingItem(
+                      'Reset Password',
+                      Icons.lock_outline,
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: const Text('Reset Password'),
+                            content: Text(
+                              'Send a password reset email to ${_user!.email}?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogContext),
+                                child: const Text(
+                                  'Cancel',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  Navigator.pop(dialogContext);
+                                  try {
+                                    await _authService.resetPassword(
+                                      _user!.email!,
+                                    );
+                                    if (mounted) {
+                                      AppSnackBar.success(
+                                        context,
+                                        'Password reset link sent to ${_user!.email}!',
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      AppSnackBar.error(context, e.toString());
+                                    }
+                                  }
+                                },
+                                child: const Text(
+                                  'Send Link',
+                                  style: TextStyle(
+                                    color: Color(0xFF1565C0),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   _buildSettingItem(
                     'Log Out',
                     Icons.logout,
