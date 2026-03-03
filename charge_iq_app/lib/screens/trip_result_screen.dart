@@ -259,13 +259,14 @@ class _TripResultScreenState extends State<TripResultScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     String titleText = '${widget.startLocation} → ${widget.destination}';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(titleText, style: const TextStyle(fontSize: 16)),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         centerTitle: true,
         actions: [
           if (!_isLoading && _generatedPlan != null && widget.tripId != null)
@@ -394,15 +395,16 @@ class _TripResultScreenState extends State<TripResultScreen>
   }
 
   Widget _buildSummaryCard(Map<String, dynamic> plan) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final segments = plan['route_segments'] as List? ?? [];
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -497,6 +499,7 @@ class _TripResultScreenState extends State<TripResultScreen>
   }
 
   Widget _buildVehicleCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (_tripVehicle == null) return const SizedBox.shrink();
 
     return GestureDetector(
@@ -511,11 +514,11 @@ class _TripResultScreenState extends State<TripResultScreen>
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -529,12 +532,12 @@ class _TripResultScreenState extends State<TripResultScreen>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     _getVehicleIcon(),
-                    color: Colors.black87,
+                    color: isDark ? Colors.white70 : Colors.black87,
                     size: 20,
                   ),
                 ),
@@ -545,10 +548,10 @@ class _TripResultScreenState extends State<TripResultScreen>
                     children: [
                       Text(
                         '${_tripVehicle!.brand} ${_tripVehicle!.model}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       if (_tripVehicle!.variant.isNotEmpty &&
@@ -655,12 +658,13 @@ class _TripResultScreenState extends State<TripResultScreen>
   }
 
   Widget _buildVehicleInfoChip(IconData icon, String value, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FE),
+        color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F9FE),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -682,10 +686,10 @@ class _TripResultScreenState extends State<TripResultScreen>
           const SizedBox(height: 2),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -696,23 +700,24 @@ class _TripResultScreenState extends State<TripResultScreen>
   }
 
   Widget _buildStatChip(IconData icon, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F4FF),
+        color: isDark ? const Color(0xFF0D2744) : const Color(0xFFE3F2FD),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE0E7FF)),
+        border: Border.all(color: isDark ? const Color(0xFF1565C0) : const Color(0xFFBBDEFB)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF1565C0)),
+          Icon(icon, size: 18, color: isDark ? const Color(0xFF64B5F6) : const Color(0xFF1976D2)),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFF1565C0),
+              style: TextStyle(
+                color: isDark ? const Color(0xFF90CAF9) : const Color(0xFF1565C0),
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
               ),
@@ -790,14 +795,15 @@ class _TripResultScreenState extends State<TripResultScreen>
   }
 
   Widget _buildTimelineDot(bool isStop) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 20,
       height: 20,
       decoration: BoxDecoration(
-        color: isStop ? Colors.transparent : Colors.white,
+        color: isStop ? Colors.transparent : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
         shape: BoxShape.circle,
         border: Border.all(
-          color: isStop ? Colors.transparent : Colors.grey.shade400,
+          color: isStop ? Colors.transparent : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
           width: 2,
         ),
       ),
@@ -817,6 +823,7 @@ class _TripResultScreenState extends State<TripResultScreen>
   }
 
   Widget _buildDriveInfo(dynamic segment) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -827,7 +834,7 @@ class _TripResultScreenState extends State<TripResultScreen>
         const SizedBox(height: 4),
         Text(
           _cleanText(segment['duration'] ?? ''),
-          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 13),
         ),
       ],
     );
@@ -876,13 +883,17 @@ class _TripResultScreenState extends State<TripResultScreen>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF1A2E1A)
+                            : const Color(0xFFE8F5E9),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         _cleanText('Est. ${segment['charging_time'] ?? 'N/A'}'),
-                        style: const TextStyle(
-                          color: Color(0xFF2E7D32),
+                        style: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF66BB6A)
+                              : const Color(0xFF2E7D32),
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -985,10 +996,12 @@ class _TripResultScreenState extends State<TripResultScreen>
                           const SizedBox(height: 6),
                           Text(
                             segment['notes'],
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontStyle: FontStyle.italic,
-                              color: Colors.black54,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white54
+                                  : Colors.black54,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,

@@ -58,6 +58,9 @@ class MapScreenState extends State<MapScreen> {
   // Quick Charge AI setting
   bool useAIForQuickCharge = true;
 
+  // Dark mode map style
+  bool _isDark = false;
+
   // Cache settings
   static const String CACHE_KEY = 'map_ev_stations_cache';
   static const String CACHE_TIMESTAMP_KEY = 'map_ev_stations_timestamp';
@@ -94,6 +97,16 @@ class MapScreenState extends State<MapScreen> {
       setState(() {
         useAIForQuickCharge = prefs.getBool('quick_charge_use_ai') ?? true;
       });
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (isDark != _isDark) {
+      _isDark = isDark;
+      mapController?.setMapStyle(isDark ? _darkMapStyle : null);
     }
   }
 
@@ -930,6 +943,7 @@ class MapScreenState extends State<MapScreen> {
     Map<String, dynamic> station,
     StateSetter setModalState,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final distance = station['distance']?.toStringAsFixed(1) ?? 'N/A';
     final rating = station['rating']?.toDouble() ?? 0.0;
     final totalRatings = station['userRatingsTotal'] ?? 0;
@@ -940,11 +954,11 @@ class MapScreenState extends State<MapScreen> {
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withOpacity(isDark ? 0.4 : 0.2),
             blurRadius: 30,
             offset: const Offset(0, 10),
           ),
@@ -956,9 +970,9 @@ class MapScreenState extends State<MapScreen> {
           // Header
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(24),
                 topRight: Radius.circular(24),
               ),
@@ -984,8 +998,8 @@ class MapScreenState extends State<MapScreen> {
                     children: [
                       Text(
                         station['name'],
-                        style: const TextStyle(
-                          color: Color(0xFF1A1A2E),
+                        style: TextStyle(
+                          color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -997,14 +1011,14 @@ class MapScreenState extends State<MapScreen> {
                         children: [
                           Icon(
                             Icons.location_on,
-                            color: Colors.grey[500],
+                            color: isDark ? Colors.grey[500] : Colors.grey[500],
                             size: 16,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '$distance km away',
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: isDark ? Colors.grey[400] : Colors.grey[600],
                               fontSize: 14,
                             ),
                           ),
@@ -1021,7 +1035,7 @@ class MapScreenState extends State<MapScreen> {
                         : Icons.bookmark_border,
                     color: _savedStationIds.contains(station['id'])
                         ? const Color(0xFF4285F4)
-                        : Colors.grey[400],
+                        : (isDark ? Colors.grey[500] : Colors.grey[400]),
                     size: 28,
                   ),
                   onPressed: () async {
@@ -1090,10 +1104,14 @@ class MapScreenState extends State<MapScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: isOpen ? Colors.green[50] : Colors.red[50],
+                      color: isOpen
+                          ? (isDark ? const Color(0xFF1B3A1F) : Colors.green[50])
+                          : (isDark ? const Color(0xFF3A1010) : Colors.red[50]),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isOpen ? Colors.green : Colors.red,
+                        color: isOpen
+                            ? (isDark ? const Color(0xFF388E3C) : Colors.green)
+                            : (isDark ? const Color(0xFFE57373) : Colors.red),
                         width: 1,
                       ),
                     ),
@@ -1104,7 +1122,9 @@ class MapScreenState extends State<MapScreen> {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: isOpen ? Colors.green : Colors.red,
+                            color: isOpen
+                                ? (isDark ? const Color(0xFF66BB6A) : Colors.green)
+                                : (isDark ? const Color(0xFFE57373) : Colors.red),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -1133,9 +1153,9 @@ class MapScreenState extends State<MapScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFF8E1),
+                        color: isDark ? const Color(0xFF2A2000) : const Color(0xFFFFF8E1),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFFFE082)),
+                        border: Border.all(color: isDark ? const Color(0xFFD4AA2C).withOpacity(0.4) : const Color(0xFFFFE082)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1150,8 +1170,8 @@ class MapScreenState extends State<MapScreen> {
                             rating > 0
                                 ? '${rating.toStringAsFixed(1)} ($totalRatings)'
                                 : 'No ratings',
-                            style: const TextStyle(
-                              color: Color(0xFF8C6D1F),
+                            style: TextStyle(
+                              color: isDark ? const Color(0xFFD4AA2C) : const Color(0xFF8C6D1F),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1165,9 +1185,9 @@ class MapScreenState extends State<MapScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
+                        color: isDark ? const Color(0xFF1B3A20) : const Color(0xFFE8F5E9),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFC8E6C9)),
+                        border: Border.all(color: isDark ? const Color(0xFF388E3C) : const Color(0xFFC8E6C9)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1175,13 +1195,13 @@ class MapScreenState extends State<MapScreen> {
                           Icon(
                             chargingTypeIcon,
                             size: 14,
-                            color: const Color(0xFF2E7D32),
+                            color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             chargingType,
-                            style: const TextStyle(
-                              color: Color(0xFF2E7D32),
+                            style: TextStyle(
+                              color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1254,7 +1274,7 @@ class MapScreenState extends State<MapScreen> {
                           station['ai_reason'] ??
                               'Optimal choice based on analysis',
                           style: TextStyle(
-                            color: Colors.grey[700],
+                            color: isDark ? Colors.grey[400] : Colors.grey[700],
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                             height: 1.3,
@@ -1282,7 +1302,7 @@ class MapScreenState extends State<MapScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.blue[50],
+                              color: isDark ? const Color(0xFF0D2744) : Colors.blue[50],
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: Colors.blue.withOpacity(0.3),
@@ -1318,7 +1338,7 @@ class MapScreenState extends State<MapScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.green[50],
+                              color: isDark ? const Color(0xFF1B3A20) : Colors.green[50],
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: Colors.green.withOpacity(0.3),
@@ -1354,14 +1374,14 @@ class MapScreenState extends State<MapScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.place, color: Colors.grey[700], size: 20),
+                    Icon(Icons.place, color: isDark ? Colors.grey[500] : Colors.grey[700], size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         station['vicinity'],
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[700],
+                          color: isDark ? Colors.grey[400] : Colors.grey[700],
                           height: 1.4,
                         ),
                       ),
@@ -1819,6 +1839,7 @@ class MapScreenState extends State<MapScreen> {
 
   /// Top bar when trip route is showing: white card with back button, destination name, address.
   Widget _buildTripRouteTopBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned(
       top: MediaQuery.of(context).padding.top + 8,
       left: 12,
@@ -1830,7 +1851,7 @@ class MapScreenState extends State<MapScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
@@ -1840,13 +1861,13 @@ class MapScreenState extends State<MapScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: isDark ? const Color(0xFF2A2A2A) : Colors.grey[100],
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_back_ios_new,
                     size: 18,
-                    color: Color(0xFF1A1A2E),
+                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                   ),
                 ),
               ),
@@ -1860,10 +1881,10 @@ class MapScreenState extends State<MapScreen> {
                       _tripDestination.isNotEmpty
                           ? _tripDestination
                           : 'Destination',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
-                        color: Color(0xFF1A1A2E),
+                        color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1878,7 +1899,7 @@ class MapScreenState extends State<MapScreen> {
                               : _tripDestination,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: isDark ? Colors.grey[400] : Colors.grey[500],
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1896,20 +1917,21 @@ class MapScreenState extends State<MapScreen> {
 
   /// Bottom panel: drag handle, distance/duration chips, Start Navigation button.
   Widget _buildTripRoutePanel() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned(
       bottom: 0,
       left: 0,
       right: 0,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.15),
               blurRadius: 24,
               offset: const Offset(0, -6),
             ),
@@ -1928,7 +1950,7 @@ class MapScreenState extends State<MapScreen> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 14),
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: isDark ? const Color(0xFF3A3A3A) : Colors.grey[300],
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -2378,6 +2400,7 @@ class MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final evStationCount = markers
         .where((m) => m.markerId.value != 'current_location')
         .length;
@@ -2400,6 +2423,7 @@ class MapScreenState extends State<MapScreen> {
             compassEnabled: true,
             onMapCreated: (controller) {
               mapController = controller;
+              if (_isDark) controller.setMapStyle(_darkMapStyle);
             },
             onTap: (_) {
               // Clear selected station when tapping map
@@ -2420,11 +2444,11 @@ class MapScreenState extends State<MapScreen> {
             bottom: _showSearchResults ? 16 : null,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
                     blurRadius: 20,
                     offset: const Offset(0, 4),
                   ),
@@ -2439,11 +2463,11 @@ class MapScreenState extends State<MapScreen> {
                     focusNode: searchFocusNode,
                     decoration: InputDecoration(
                       hintText: 'Search stations or city...',
-                      hintStyle: TextStyle(color: Colors.grey[500]),
-                      prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                      hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[500]),
+                      prefixIcon: Icon(Icons.search, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                       suffixIcon: searchController.text.isNotEmpty
                           ? IconButton(
-                              icon: Icon(Icons.close, color: Colors.grey[600]),
+                              icon: Icon(Icons.close, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                               onPressed: () {
                                 searchController.clear();
                                 searchFocusNode.unfocus();
@@ -2463,7 +2487,7 @@ class MapScreenState extends State<MapScreen> {
 
                   // Search Results List (Only shown when searching)
                   if (_showSearchResults) ...[
-                    const Divider(height: 1, thickness: 1),
+                    Divider(height: 1, thickness: 1, color: isDark ? const Color(0xFF2A2A2A) : null),
                     Expanded(
                       child: _searchResults.isEmpty
                           ? Center(
@@ -2512,7 +2536,7 @@ class MapScreenState extends State<MapScreen> {
                                     decoration: BoxDecoration(
                                       border: Border(
                                         bottom: BorderSide(
-                                          color: Colors.grey[200]!,
+                                          color: isDark ? const Color(0xFF2A2A2A) : Colors.grey[200]!,
                                           width: 0.5,
                                         ),
                                       ),
@@ -2556,9 +2580,10 @@ class MapScreenState extends State<MapScreen> {
                                                     (isCity
                                                         ? 'City'
                                                         : 'Station'),
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontWeight: FontWeight.w600,
                                                   fontSize: 15,
+                                                  color: isDark ? Colors.white : null,
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -2575,7 +2600,7 @@ class MapScreenState extends State<MapScreen> {
                                                           ''),
                                                 style: TextStyle(
                                                   fontSize: 12,
-                                                  color: Colors.grey[600],
+                                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -2664,11 +2689,11 @@ class MapScreenState extends State<MapScreen> {
                   Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withOpacity(isDark ? 0.25 : 0.1),
                           blurRadius: 20,
                           offset: const Offset(0, 4),
                         ),
@@ -2696,11 +2721,11 @@ class MapScreenState extends State<MapScreen> {
                 // My location button
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withOpacity(isDark ? 0.25 : 0.1),
                         blurRadius: 20,
                         offset: const Offset(0, 4),
                       ),
@@ -2748,4 +2773,27 @@ class MapScreenState extends State<MapScreen> {
       ),
     );
   }
+
+  static const String _darkMapStyle = '''
+[
+  {"elementType": "geometry", "stylers": [{"color": "#242f3e"}]},
+  {"elementType": "labels.text.stroke", "stylers": [{"color": "#242f3e"}]},
+  {"elementType": "labels.text.fill", "stylers": [{"color": "#746855"}]},
+  {"featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{"color": "#d59563"}]},
+  {"featureType": "poi", "elementType": "labels.text.fill", "stylers": [{"color": "#d59563"}]},
+  {"featureType": "poi.park", "elementType": "geometry", "stylers": [{"color": "#263c3f"}]},
+  {"featureType": "poi.park", "elementType": "labels.text.fill", "stylers": [{"color": "#6b9a76"}]},
+  {"featureType": "road", "elementType": "geometry", "stylers": [{"color": "#38414e"}]},
+  {"featureType": "road", "elementType": "geometry.stroke", "stylers": [{"color": "#212a37"}]},
+  {"featureType": "road", "elementType": "labels.text.fill", "stylers": [{"color": "#9ca5b3"}]},
+  {"featureType": "road.highway", "elementType": "geometry", "stylers": [{"color": "#746855"}]},
+  {"featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{"color": "#1f2835"}]},
+  {"featureType": "road.highway", "elementType": "labels.text.fill", "stylers": [{"color": "#f3d19c"}]},
+  {"featureType": "transit", "elementType": "geometry", "stylers": [{"color": "#2f3948"}]},
+  {"featureType": "transit.station", "elementType": "labels.text.fill", "stylers": [{"color": "#d59563"}]},
+  {"featureType": "water", "elementType": "geometry", "stylers": [{"color": "#17263c"}]},
+  {"featureType": "water", "elementType": "labels.text.fill", "stylers": [{"color": "#515c6d"}]},
+  {"featureType": "water", "elementType": "labels.text.stroke", "stylers": [{"color": "#17263c"}]}
+]
+''';
 }

@@ -3,6 +3,10 @@ import '../models/vehicle.dart';
 import '../services/vehicle_service.dart';
 import '../utils/app_snackbar.dart';
 
+// helper used across both screens in this file
+bool _isDarkCtx(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
+
 class ManageVehiclesScreen extends StatefulWidget {
   const ManageVehiclesScreen({super.key});
 
@@ -15,8 +19,9 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _isDarkCtx(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FE),
       appBar: AppBar(
         title: const Text('My Vehicles'),
         backgroundColor: const Color(0xFF1565C0),
@@ -84,19 +89,19 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Manage Your Vehicles',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                                color: isDark ? Colors.white : Colors.black87,
                               ),
                             ),
                             Text(
                               '${vehicles.length} vehicle${vehicles.length == 1 ? '' : 's'} registered',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey[500],
+                                color: Colors.grey[isDark ? 400 : 500],
                               ),
                             ),
                           ],
@@ -106,7 +111,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                     const SizedBox(height: 20),
                     Expanded(
                       child: vehicles.isEmpty
-                          ? _buildEmptyState()
+                          ? _buildEmptyState(isDark)
                           : ListView.separated(
                               itemCount: vehicles.length,
                               separatorBuilder: (context, index) =>
@@ -115,6 +120,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                                   _buildVehicleCard(
                                     vehicles[index],
                                     defaultVehicleId,
+                                    isDark,
                                   ),
                             ),
                     ),
@@ -146,7 +152,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(bool isDark) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -164,12 +170,12 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'No vehicles added yet',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black87,
+              color: isDark ? Colors.white : Colors.black87,
             ),
           ),
           const SizedBox(height: 8),
@@ -178,7 +184,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[500],
+              color: Colors.grey[isDark ? 400 : 500],
               height: 1.5,
             ),
           ),
@@ -187,7 +193,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
     );
   }
 
-  Widget _buildVehicleCard(Vehicle vehicle, String? defaultVehicleId) {
+  Widget _buildVehicleCard(Vehicle vehicle, String? defaultVehicleId, bool isDark) {
     final isDefault = vehicle.id == defaultVehicleId;
     IconData vehicleIcon;
     switch (vehicle.vehicleType) {
@@ -207,7 +213,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: isDefault
             ? Border.all(color: const Color(0xFF10B981), width: 2)
@@ -241,9 +247,10 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                   children: [
                     Text(
                       '${vehicle.brand} ${vehicle.model}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -253,7 +260,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                         vehicle.vehicleType,
                         '${vehicle.manufacturingYear}',
                       ].join(' • '),
-                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 13, color: Colors.grey[isDark ? 400 : 600]),
                     ),
                   ],
                 ),
@@ -362,7 +369,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0F9FF),
+              color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F9FF),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -373,20 +380,23 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                   '${vehicle.batteryCapacity} kWh',
                   'Battery',
                   const Color(0xFF10B981),
+                  isDark,
                 ),
-                Container(width: 1, height: 30, color: Colors.grey[300]),
+                Container(width: 1, height: 30, color: isDark ? Colors.grey[700] : Colors.grey[300]),
                 _buildQuickStat(
                   Icons.route,
                   '${vehicle.maxRange} km',
                   'Range',
                   const Color(0xFF1565C0),
+                  isDark,
                 ),
-                Container(width: 1, height: 30, color: Colors.grey[300]),
+                Container(width: 1, height: 30, color: isDark ? Colors.grey[700] : Colors.grey[300]),
                 _buildQuickStat(
                   Icons.ev_station,
                   vehicle.chargingPortType,
                   'Port',
                   const Color(0xFFE65100),
+                  isDark,
                 ),
               ],
             ),
@@ -401,6 +411,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
     String value,
     String label,
     Color color,
+    bool isDark,
   ) {
     return Column(
       children: [
@@ -408,9 +419,13 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
         ),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[isDark ? 400 : 500])),
       ],
     );
   }
@@ -479,9 +494,11 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
   }
 
   void _showVehicleDetails(Vehicle vehicle) {
+    final isDark = _isDarkCtx(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -531,9 +548,10 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                       children: [
                         Text(
                           '${vehicle.brand} ${vehicle.model}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
                         ),
                         if (vehicle.variant.isNotEmpty)
@@ -541,7 +559,7 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                             vehicle.variant,
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[600],
+                              color: Colors.grey[isDark ? 400 : 600],
                             ),
                           ),
                       ],
@@ -613,10 +631,11 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
   }
 
   Widget _buildDetailSection(String title, List<Widget> children) {
+    final isDark = _isDarkCtx(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -631,7 +650,11 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
           ),
           const Divider(height: 20),
           ...children,
@@ -641,15 +664,20 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
   }
 
   Widget _buildDetailRow(String label, String value) {
+    final isDark = _isDarkCtx(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+          Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[isDark ? 400 : 600])),
           Text(
             value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
           ),
         ],
       ),
@@ -831,8 +859,9 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _isDarkCtx(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FE),
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Vehicle' : 'Add Vehicle'),
         backgroundColor: const Color(0xFF1565C0),
@@ -1057,7 +1086,7 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: Colors.grey[700],
+                          color: isDark ? Colors.white70 : Colors.grey[700],
                         ),
                       ),
                       Container(
@@ -1105,7 +1134,7 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
                   ),
                   Text(
                     '80% recommended for battery longevity',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[isDark ? 400 : 500]),
                   ),
                 ],
               ),
@@ -1165,6 +1194,7 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
   // ── Helper Widgets ──
 
   Widget _buildSectionHeader(String emoji, String title, String subtitle) {
+    final isDark = _isDarkCtx(context);
     return Row(
       children: [
         Text(emoji, style: const TextStyle(fontSize: 22)),
@@ -1174,15 +1204,15 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
           children: [
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: isDark ? Colors.white : Colors.black87,
               ),
             ),
             Text(
               subtitle,
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 12, color: Colors.grey[isDark ? 400 : 500]),
             ),
           ],
         ),
@@ -1191,10 +1221,11 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
   }
 
   Widget _buildCard(List<Widget> children) {
+    final isDark = _isDarkCtx(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1234,16 +1265,17 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
     ValueChanged<bool> onChanged, {
     IconData? icon,
   }) {
+    final isDark = _isDarkCtx(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 20, color: Colors.grey[600]),
+            Icon(icon, size: 20, color: Colors.grey[isDark ? 400 : 600]),
             const SizedBox(width: 10),
           ],
           Expanded(
@@ -1252,7 +1284,7 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
+                color: isDark ? Colors.white70 : Colors.grey[700],
               ),
             ),
           ),

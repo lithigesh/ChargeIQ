@@ -517,10 +517,9 @@ class _NavigationScreenState extends State<NavigationScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData.light(),
-      child: Scaffold(
-        backgroundColor: Colors.white,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Stack(
           children: [
           // Full-screen Google Map
@@ -565,6 +564,7 @@ class _NavigationScreenState extends State<NavigationScreen>
           if (!_isLoading && !_hasError)
             Builder(
               builder: (ctx) {
+                final isDark = Theme.of(ctx).brightness == Brightness.dark;
                 final screenH = MediaQuery.of(ctx).size.height;
                 final safeBottom = MediaQuery.of(ctx).padding.bottom;
                 // Collapsed panel ≈ handle(26) + stops label(36) + stops scroll(135) + hint(46) + button(86) + safeArea
@@ -593,7 +593,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                         _fitBounds(_polylines.first.points);
                       }
                     },
-                    backgroundColor: Colors.white,
+                    backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                     child: const Icon(Icons.my_location, color: Color(0xFF4285F4)),
                   ),
                 );
@@ -601,11 +601,11 @@ class _NavigationScreenState extends State<NavigationScreen>
             ),
         ],
       ),
-      ),
     );
   }
 
   Widget _buildLoadingOverlay() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       color: Colors.black54,
       child: Center(
@@ -615,7 +615,7 @@ class _NavigationScreenState extends State<NavigationScreen>
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -635,12 +635,12 @@ class _NavigationScreenState extends State<NavigationScreen>
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
+                  Text(
                     'Loading Route...',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A2E),
+                      color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -654,6 +654,7 @@ class _NavigationScreenState extends State<NavigationScreen>
   }
 
   Widget _buildErrorOverlay() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       color: Colors.black54,
       child: Center(
@@ -661,7 +662,7 @@ class _NavigationScreenState extends State<NavigationScreen>
           margin: const EdgeInsets.all(32),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
@@ -681,7 +682,7 @@ class _NavigationScreenState extends State<NavigationScreen>
               Text(
                 'Unable to find directions.\nPlease check the locations and try again.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[600]),
+                style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -707,6 +708,7 @@ class _NavigationScreenState extends State<NavigationScreen>
   }
 
   Widget _buildTopBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned(
       top: MediaQuery.of(context).padding.top + 8,
       left: 12,
@@ -729,12 +731,12 @@ class _NavigationScreenState extends State<NavigationScreen>
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   _isNavigating ? Icons.close : Icons.arrow_back,
-                  color: const Color(0xFF1A1A2E),
+                  color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                 ),
               ),
             ),
@@ -751,7 +753,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                   vertical: 14,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -759,10 +761,10 @@ class _NavigationScreenState extends State<NavigationScreen>
                   children: [
                     Text(
                       _displayDestinationName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: Color(0xFF1A1A2E),
+                        color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -782,7 +784,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                               _totalDistance,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey[700],
+                                color: isDark ? Colors.grey[400] : Colors.grey[700],
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -792,7 +794,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                             Text(
                               '  •  ',
                               style: TextStyle(
-                                color: Colors.grey[400],
+                                color: isDark ? Colors.grey[600] : Colors.grey[400],
                                 fontSize: 13,
                               ),
                             ),
@@ -922,6 +924,7 @@ class _NavigationScreenState extends State<NavigationScreen>
   }
 
   Widget _buildNavigationControls() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned(
       bottom: MediaQuery.of(context).padding.bottom + 16,
       left: 16,
@@ -932,7 +935,7 @@ class _NavigationScreenState extends State<NavigationScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -945,7 +948,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                   Icons.arrow_back_ios_rounded,
                   color: _currentStepIndex > 0
                       ? const Color(0xFF4285F4)
-                      : Colors.grey[300],
+                      : isDark ? Colors.grey[700] : Colors.grey[300],
                 ),
               ),
               // Step counter
@@ -954,10 +957,10 @@ class _NavigationScreenState extends State<NavigationScreen>
                 children: [
                   Text(
                     'Step ${_currentStepIndex + 1} of ${_steps.length}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: Color(0xFF1A1A2E),
+                      color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -967,7 +970,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: (_currentStepIndex + 1) / _steps.length,
-                        backgroundColor: Colors.grey[200],
+                        backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           Color(0xFF4285F4),
                         ),
@@ -980,7 +983,7 @@ class _NavigationScreenState extends State<NavigationScreen>
               // Stop button
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.red[50],
+                  color: isDark ? const Color(0xFF3A1010) : Colors.red[50],
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: IconButton(
@@ -1001,7 +1004,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                   Icons.arrow_forward_ios_rounded,
                   color: _currentStepIndex < _steps.length - 1
                       ? const Color(0xFF4285F4)
-                      : Colors.grey[300],
+                      : isDark ? Colors.grey[700] : Colors.grey[300],
                 ),
               ),
             ],
@@ -1012,6 +1015,7 @@ class _NavigationScreenState extends State<NavigationScreen>
   }
 
   Widget _buildBottomPanel() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final double expandedHeight = MediaQuery.of(context).size.height * 0.68;
     return Positioned(
       bottom: 0,
@@ -1027,7 +1031,7 @@ class _NavigationScreenState extends State<NavigationScreen>
           curve: Curves.easeOutCubic,
           height: _isSheetExpanded ? expandedHeight : null,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(28),
               topRight: Radius.circular(28),
@@ -1058,7 +1062,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                         width: 36,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.grey[300],
+                          color: isDark ? const Color(0xFF3A3A3A) : Colors.grey[300],
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -1124,10 +1128,10 @@ class _NavigationScreenState extends State<NavigationScreen>
                         const SizedBox(width: 10),
                         Text(
                           'Turn-by-Turn  ·  ${_steps.length} steps',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1A2E),
+                            color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                             letterSpacing: 0.1,
                           ),
                         ),
@@ -1149,7 +1153,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Colors.grey[500],
+                            color: isDark ? Colors.grey[400] : Colors.grey[500],
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -1389,6 +1393,7 @@ class _NavigationScreenState extends State<NavigationScreen>
 
   Widget _buildStopChip(
       String name, int number, double width, String? chargeTime) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: width,
       padding: const EdgeInsets.all(13),
@@ -1438,10 +1443,10 @@ class _NavigationScreenState extends State<NavigationScreen>
           const SizedBox(height: 8),
           Text(
             name,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1A1A2E),
+              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
               height: 1.3,
             ),
             maxLines: 3,
@@ -1451,14 +1456,14 @@ class _NavigationScreenState extends State<NavigationScreen>
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.timer_outlined, size: 11, color: Colors.grey[500]),
+                Icon(Icons.timer_outlined, size: 11, color: isDark ? Colors.grey[400] : Colors.grey[500]),
                 const SizedBox(width: 3),
                 Flexible(
                   child: Text(
                     chargeTime,
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.grey[500],
+                      color: isDark ? Colors.grey[400] : Colors.grey[500],
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -1475,6 +1480,7 @@ class _NavigationScreenState extends State<NavigationScreen>
 
   // Full vertical turn-by-turn step list with timeline connectors
   Widget _buildFullStepsList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
       itemCount: _steps.length,
@@ -1573,7 +1579,7 @@ class _NavigationScreenState extends State<NavigationScreen>
                     margin: EdgeInsets.only(bottom: isLast ? 8 : 14),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FE),
+                      color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF8F9FE),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: nodeColor.withOpacity(0.15),
@@ -1584,10 +1590,10 @@ class _NavigationScreenState extends State<NavigationScreen>
                       children: [
                         Text(
                           step['instruction'] ?? 'Continue',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A2E),
+                            color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                             height: 1.35,
                           ),
                         ),
@@ -1597,14 +1603,14 @@ class _NavigationScreenState extends State<NavigationScreen>
                             Icon(
                               Icons.straighten_rounded,
                               size: 13,
-                              color: Colors.grey[500],
+                              color: isDark ? Colors.grey[400] : Colors.grey[500],
                             ),
                             const SizedBox(width: 3),
                             Text(
                               step['distance'] ?? '',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: isDark ? Colors.grey[400] : Colors.grey[600],
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -1612,14 +1618,14 @@ class _NavigationScreenState extends State<NavigationScreen>
                             Icon(
                               Icons.schedule_rounded,
                               size: 13,
-                              color: Colors.grey[500],
+                              color: isDark ? Colors.grey[400] : Colors.grey[500],
                             ),
                             const SizedBox(width: 3),
                             Text(
                               step['duration'] ?? '',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: isDark ? Colors.grey[400] : Colors.grey[600],
                               ),
                             ),
                           ],
@@ -1669,6 +1675,7 @@ class _NavigationScreenState extends State<NavigationScreen>
 
   Widget _buildStepPreviewCard(
       Map<String, dynamic> step, int index, double cardWidth) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () {
         _mapController?.animateCamera(
@@ -1682,9 +1689,9 @@ class _NavigationScreenState extends State<NavigationScreen>
         margin: const EdgeInsets.only(right: 8, top: 4, bottom: 4),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8F9FE),
+          color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF8F9FE),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.withOpacity(0.15)),
+          border: Border.all(color: Colors.grey.withOpacity(isDark ? 0.08 : 0.15)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1719,7 +1726,7 @@ class _NavigationScreenState extends State<NavigationScreen>
               step['instruction'] ?? '',
               style: TextStyle(
                 fontSize: 9,
-                color: Colors.grey[600],
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
                 height: 1.2,
               ),
               textAlign: TextAlign.center,

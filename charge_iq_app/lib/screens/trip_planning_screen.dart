@@ -273,6 +273,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   }
 
   void _showVehicleSelector() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -281,7 +282,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
         return Container(
           margin: const EdgeInsets.fromLTRB(12, 0, 12, 24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
@@ -294,7 +295,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   width: 32,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDDE3EE),
+                    color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFDDE3EE),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -302,16 +303,16 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               // Header row
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-                child: const Text(
+                child: Text(
                   'Select Vehicle',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A2E),
+                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                   ),
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFF0F4FB)),
+              Divider(height: 1, color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF0F4FB)),
               // Vehicle list
               if (_allVehicles.isEmpty)
                 Padding(
@@ -376,15 +377,15 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: isSel
-                                  ? const Color(0xFF1A1A2E)
-                                  : const Color(0xFFF0F4FB),
+                                  ? (isDark ? Colors.white : const Color(0xFF1A1A2E))
+                                  : (isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF0F4FB)),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
                               vehicleIcon,
                               color: isSel
-                                  ? Colors.white
-                                  : const Color(0xFF1565C0),
+                                  ? (isDark ? const Color(0xFF1A1A2E) : Colors.white)
+                                  : const Color(0xFF42A5F5),
                               size: 16,
                             ),
                           ),
@@ -396,18 +397,18 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                               children: [
                                 Text(
                                   '${vehicle.brand} ${vehicle.model}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13,
-                                    color: Color(0xFF1A1A2E),
+                                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   vehicle.chargingPortType,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
-                                    color: Color(0xFF90A4AE),
+                                    color: isDark ? Colors.grey[400] : const Color(0xFF90A4AE),
                                   ),
                                 ),
                               ],
@@ -420,9 +421,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF1565C0,
-                              ).withValues(alpha: 0.08),
+                              color: const Color(0xFF42A5F5).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -430,7 +429,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF1565C0),
+                                color: Color(0xFF42A5F5),
                               ),
                             ),
                           ),
@@ -469,7 +468,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -506,21 +505,21 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                             ),
                           );
                         },
-                        child: const Row(
+                        child: Row(
                           children: [
                             Text(
                               'View All',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Color.fromARGB(255, 51, 155, 33),
+                                color: const Color(0xFF00C853),
                               ),
                             ),
-                            SizedBox(width: 4),
-                            Icon(
+                            const SizedBox(width: 4),
+                            const Icon(
                               Icons.arrow_forward_ios,
                               size: 14,
-                              color: Color.fromARGB(255, 51, 155, 33),
+                              color: Color(0xFF00C853),
                             ),
                           ],
                         ),
@@ -579,11 +578,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   }
 
   Widget _buildVehicleHeaderCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (_vehiclesLoading) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Center(
@@ -644,11 +644,11 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -660,12 +660,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0F4FF),
+                      color: const Color(0xFF42A5F5).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
                       Icons.directions_car,
-                      color: Color(0xFF1565C0),
+                      color: Color(0xFF42A5F5),
                       size: 22,
                     ),
                   ),
@@ -685,6 +685,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   }
 
   Widget _buildSingleVehicleDisplay(Vehicle vehicle) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     IconData vehicleIcon;
     switch (vehicle.vehicleType) {
       case '2 Wheeler':
@@ -705,10 +706,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
         Container(
           padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E),
+            color: isDark ? const Color(0xFF00C853) : const Color(0xFF1A1A2E),
             borderRadius: BorderRadius.circular(9),
           ),
-          child: Icon(vehicleIcon, color: Colors.white, size: 15),
+          child: Icon(vehicleIcon, color: isDark ? Colors.black87 : Colors.white, size: 15),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -727,7 +728,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               const SizedBox(height: 2),
               Text(
                 vehicle.chargingPortType,
-                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 11, color: isDark ? Colors.grey[400] : Colors.grey[500]),
               ),
             ],
           ),
@@ -737,7 +738,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
           children: [
             Text(
               'Max Range',
-              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 10, color: isDark ? Colors.grey[400] : Colors.grey[500]),
             ),
             const SizedBox(height: 2),
             Text(
@@ -745,7 +746,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1565C0),
+                color: Color(0xFF42A5F5),
               ),
             ),
           ],
@@ -840,7 +841,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1565C0),
+                color: Color(0xFF42A5F5),
               ),
             ),
           ],
@@ -852,14 +853,15 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   }
 
   Widget _buildInputCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -885,6 +887,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     if (selected) _startLocationName = null;
                   });
                 },
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 selectedColor: const Color.fromARGB(
                   255,
                   51,
@@ -893,8 +896,8 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                 ).withValues(alpha: 0.2),
                 labelStyle: TextStyle(
                   color: _useCurrentLocation
-                      ? const Color.fromARGB(255, 51, 155, 33)
-                      : Colors.black,
+                      ? const Color(0xFF00C853)
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontWeight: _useCurrentLocation
                       ? FontWeight.bold
                       : FontWeight.normal,
@@ -909,11 +912,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     _useCurrentLocation = !selected;
                   });
                 },
-                selectedColor: const Color(0xFF1565C0).withValues(alpha: 0.2),
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                selectedColor: const Color(0xFF42A5F5).withValues(alpha: 0.2),
                 labelStyle: TextStyle(
                   color: !_useCurrentLocation
-                      ? const Color(0xFF1565C0)
-                      : Colors.black,
+                      ? const Color(0xFF42A5F5)
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontWeight: !_useCurrentLocation
                       ? FontWeight.bold
                       : FontWeight.normal,
@@ -952,13 +956,13 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                         elevation: 6,
                         shadowColor: Colors.black.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(16),
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                         child: Container(
                           width: constraints.maxWidth,
                           constraints: const BoxConstraints(maxHeight: 260),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.grey.shade100),
+                            border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade100),
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
@@ -970,7 +974,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                 height: 1,
                                 indent: 56,
                                 endIndent: 16,
-                                color: Colors.grey.shade100,
+                                color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
                               ),
                               itemBuilder: (context, index) {
                                 final option = options.elementAt(index);
@@ -1052,7 +1056,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                               Icons.search,
                               color: Colors.grey,
                             ),
-                            fillColor: const Color(0xFFF8F9FE),
+                            fillColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F9FE),
                             filled: true,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -1102,13 +1106,13 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                       elevation: 6,
                       shadowColor: Colors.black.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                       child: Container(
                         width: constraints.maxWidth,
                         constraints: const BoxConstraints(maxHeight: 260),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade100),
+                          border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade100),
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
@@ -1120,7 +1124,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                               height: 1,
                               indent: 56,
                               endIndent: 16,
-                              color: Colors.grey.shade100,
+                              color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
                             ),
                             itemBuilder: (context, index) {
                               final option = options.elementAt(index);
@@ -1155,10 +1159,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                           option,
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,
-                                            color: Color(0xFF1A1A2E),
+                                            color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                                           ),
                                         ),
                                       ),
@@ -1194,7 +1198,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                             Icons.location_on,
                             color: Colors.redAccent,
                           ),
-                          fillColor: const Color(0xFFF8F9FE),
+                          fillColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F9FE),
                           filled: true,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -1213,9 +1217,9 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FE),
+              color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF8F9FE),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+              border: Border.all(color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB), width: 1),
             ),
             child: Row(
               children: [
@@ -1223,7 +1227,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEEFF4),
+                    color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFEEEFF4),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
@@ -1233,7 +1237,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1242,10 +1246,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
-                          color: Color(0xFF1A1A2E),
+                          color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                         ),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
                         'Include meal stops along the route',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
@@ -1257,7 +1261,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                 Switch(
                   value: _includeRestaurants,
                   onChanged: (val) => setState(() => _includeRestaurants = val),
-                  activeColor: const Color.fromARGB(255, 51, 155, 33),
+                  activeColor: const Color(0xFF00C853),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ],
@@ -1289,17 +1293,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: _useCurrentTime
-                          ? const Color.fromARGB(
-                              255,
-                              51,
-                              155,
-                              33,
-                            ).withValues(alpha: 0.1)
-                          : const Color(0xFFF8F9FE),
+                          ? const Color(0xFF00C853).withValues(alpha: 0.1)
+                          : (isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F9FE)),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: _useCurrentTime
-                            ? const Color.fromARGB(255, 51, 155, 33)
+                            ? const Color(0xFF00C853)
                             : Colors.transparent,
                         width: 1.5,
                       ),
@@ -1311,7 +1310,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                           Icons.schedule,
                           size: 18,
                           color: _useCurrentTime
-                              ? const Color.fromARGB(255, 51, 155, 33)
+                              ? const Color(0xFF00C853)
                               : Colors.grey,
                         ),
                         const SizedBox(width: 8),
@@ -1322,8 +1321,8 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                 ? FontWeight.bold
                                 : FontWeight.normal,
                             color: _useCurrentTime
-                                ? const Color.fromARGB(255, 51, 155, 33)
-                                : Colors.black87,
+                                ? const Color(0xFF00C853)
+                                : (isDark ? Colors.white70 : Colors.black87),
                           ),
                         ),
                       ],
@@ -1343,12 +1342,12 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: !_useCurrentTime
-                          ? const Color(0xFF1565C0).withValues(alpha: 0.1)
-                          : const Color(0xFFF8F9FE),
+                          ? const Color(0xFF42A5F5).withValues(alpha: 0.12)
+                          : (isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F9FE)),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: !_useCurrentTime
-                            ? const Color(0xFF1565C0)
+                            ? const Color(0xFF42A5F5)
                             : Colors.transparent,
                         width: 1.5,
                       ),
@@ -1360,7 +1359,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                           Icons.access_time,
                           size: 18,
                           color: !_useCurrentTime
-                              ? const Color(0xFF1565C0)
+                              ? const Color(0xFF42A5F5)
                               : Colors.grey,
                         ),
                         const SizedBox(width: 8),
@@ -1373,8 +1372,8 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                                 ? FontWeight.bold
                                 : FontWeight.normal,
                             color: !_useCurrentTime
-                                ? const Color(0xFF1565C0)
-                                : Colors.black87,
+                                ? const Color(0xFF42A5F5)
+                                : (isDark ? Colors.white70 : Colors.black87),
                           ),
                         ),
                       ],
@@ -1396,25 +1395,15 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
       child: ElevatedButton(
         onPressed: _isPlanning ? null : _planTrip,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color.fromARGB(255, 51, 155, 33),
+          backgroundColor: const Color(0xFF00C853),
           foregroundColor: Colors.white,
-          disabledBackgroundColor: const Color.fromARGB(
-            255,
-            51,
-            155,
-            33,
-          ).withValues(alpha: 0.7),
+          disabledBackgroundColor: const Color(0xFF00C853).withValues(alpha: 0.7),
           disabledForegroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 5,
-          shadowColor: const Color.fromARGB(
-            255,
-            51,
-            155,
-            33,
-          ).withValues(alpha: 0.4),
+          shadowColor: const Color(0xFF00C853).withValues(alpha: 0.4),
         ),
         child: _isPlanning
             ? const Row(
@@ -1444,6 +1433,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
   }
 
   Widget _buildRecentTripsList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return StreamBuilder<List<TripPlan>>(
       stream: _tripService.getUserTrips(),
       builder: (context, snapshot) {
@@ -1523,10 +1513,10 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
               },
               child: Card(
                 elevation: 0,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade200),
+                  side: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
@@ -1560,7 +1550,7 @@ class _TripPlanningScreenState extends State<TripPlanningScreen> {
                   ),
                   subtitle: Text(
                     'Range: ${trip.evRange} km • $dateStr',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 12),
                   ),
                   trailing: const Icon(
                     Icons.arrow_forward_ios,

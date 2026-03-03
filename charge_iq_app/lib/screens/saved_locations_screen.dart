@@ -17,19 +17,20 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Saved Locations',
           style: TextStyle(
-            color: Color(0xFF1A1A2E),
+            color: isDark ? Colors.white : const Color(0xFF1A1A2E),
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
+        iconTheme: IconThemeData(color: isDark ? Colors.white : const Color(0xFF1A1A2E)),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _savedLocationService.getSavedStationsStream(),
@@ -55,7 +56,7 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
                   Icon(
                     Icons.bookmark_border,
                     size: 80,
-                    color: Colors.grey[400],
+                    color: Colors.grey[isDark ? 500 : 400],
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -63,13 +64,13 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
+                      color: isDark ? Colors.white70 : Colors.grey[700],
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Your favorite charging spots will appear here.',
-                    style: TextStyle(color: Colors.grey[600]),
+                    style: TextStyle(color: Colors.grey[isDark ? 400 : 600]),
                   ),
                 ],
               ),
@@ -92,11 +93,11 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -121,10 +122,10 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
                   ),
                   title: Text(
                     name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Color(0xFF1A1A2E),
+                      color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -137,7 +138,7 @@ class _SavedLocationsScreenState extends State<SavedLocationsScreen> {
                         Text(
                           vicinity,
                           style: TextStyle(
-                            color: Colors.grey[600],
+                            color: Colors.grey[isDark ? 400 : 600],
                             fontSize: 13,
                           ),
                           maxLines: 1,

@@ -403,9 +403,8 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData.light(useMaterial3: true),
-      child: Scaffold(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
         body: SafeArea(
           child: Stack(
             children: [
@@ -459,7 +458,6 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -479,6 +477,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   }
 
   Widget _buildErrorOverlay() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       color: Colors.black54,
       child: Center(
@@ -486,7 +485,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
           margin: const EdgeInsets.all(32),
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
@@ -505,7 +504,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
               const SizedBox(height: 8),
               Text(
                 _errorMessage!,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -554,6 +553,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   }
 
   Widget _buildTopBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned(
       top: 8,
       left: 12,
@@ -565,7 +565,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
@@ -576,13 +576,13 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: isDark ? const Color(0xFF2A2A2A) : Colors.grey[100],
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_back_ios_new,
                     size: 18,
-                    color: Color(0xFF1A1A2E),
+                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                   ),
                 ),
               ),
@@ -595,10 +595,10 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                   children: [
                     Text(
                       widget.destinationName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
-                        color: Color(0xFF1A1A2E),
+                        color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -616,7 +616,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                     else if (widget.destinationAddress != null)
                       Text(
                         widget.destinationAddress!,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[400] : Colors.grey[500]),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -631,9 +631,10 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   }
 
   Widget _buildPreviewPanel() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
@@ -659,7 +660,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 14),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                color: isDark ? const Color(0xFF3A3A3A) : Colors.grey[300],
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -811,6 +812,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
   }
 
   Widget _buildNavControls() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final safeBottom = MediaQuery.of(context).padding.bottom;
     return Positioned(
       right: 16,
@@ -831,7 +833,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                 width: 56,
                 height: 56,
                 decoration: const BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -853,12 +855,12 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: _isMuted ? const Color(0xFF1A1A2E) : Colors.white,
+                  color: _isMuted ? const Color(0xFF1A1A2E) : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                  color: _isMuted ? Colors.white : const Color(0xFF1A1A2E),
+                  color: _isMuted ? Colors.white : (isDark ? Colors.white : const Color(0xFF1A1A2E)),
                   size: 26,
                 ),
               ),

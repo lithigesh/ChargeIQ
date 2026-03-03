@@ -5,9 +5,9 @@ import '../models/vehicle.dart';
 import '../services/auth_service.dart';
 import '../services/vehicle_service.dart';
 import '../utils/app_snackbar.dart';
+import '../utils/theme_provider.dart';
 import 'sign_in_page.dart';
 import 'manage_vehicles_screen.dart';
-import 'premium_plans_screen.dart';
 import 'saved_locations_screen.dart';
 import '../services/saved_location_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -34,6 +34,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const String _routesPrefKey = 'stats_routes_taken';
   static const String _stationsPrefKey = 'stats_stations_found';
   static const String _minsPrefKey = 'stats_mins_saved';
+
+  // ── Theme helpers ────────────────────────────────────────────────────────
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _cardColor => _isDark ? const Color(0xFF1E1E1E) : Colors.white;
+  Color get _bgColor =>
+      _isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FE);
+  Color get _textPrimary => _isDark ? Colors.white : Colors.black87;
+  Color get _textSecondary => _isDark ? Colors.grey[400]! : Colors.grey[600]!;
+  Color get _textHint => _isDark ? Colors.grey[500]! : Colors.grey[500]!;
+  Color get _dividerColor =>
+      _isDark ? const Color(0xFF2C2C2C) : Colors.grey[200]!;
+  Color get _borderColor =>
+      _isDark ? Colors.grey[800]! : Colors.grey.shade100;
+  Color get _iconBgColor =>
+      _isDark ? const Color(0xFF1A3A36) : const Color(0xFFE0F2F1);
+  Color get _statBgColor =>
+      _isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FE);
+  Color get _progressBgColor =>
+      _isDark ? const Color(0xFF333333) : Colors.grey[200]!;
 
   @override
   void initState() {
@@ -76,7 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: _bgColor,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,30 +114,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Row(
                 children: [
-                  Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: CircleAvatar(
-                          radius: 35,
-                          backgroundColor: Colors.white,
-                          backgroundImage: _user?.photoURL != null
-                              ? NetworkImage(_user!.photoURL!)
-                              : null,
-                          child: _user?.photoURL == null
-                              ? const Icon(
-                                  Icons.person_outline,
-                                  size: 40,
-                                  color: Colors.blue,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: CircleAvatar(
+                      radius: 35,
+                      backgroundColor: Colors.white,
+                      backgroundImage: _user?.photoURL != null
+                          ? NetworkImage(_user!.photoURL!)
+                          : null,
+                      child: _user?.photoURL == null
+                          ? const Icon(
+                              Icons.person_outline,
+                              size: 40,
+                              color: Colors.blue,
+                            )
+                          : null,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -142,44 +158,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const PremiumPlansScreen(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF00796B),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.star, color: Colors.white, size: 12),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Pro Member',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                       ],
                     ),
+                  ),
+                  // Dark mode toggle in header
+                  ValueListenableBuilder<ThemeMode>(
+                    valueListenable: AppTheme.themeNotifier,
+                    builder: (context, mode, _) {
+                      final isDark = mode == ThemeMode.dark;
+                      return GestureDetector(
+                        onTap: () => AppTheme.setDarkMode(!isDark),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isDark ? Icons.light_mode : Icons.dark_mode,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -193,7 +195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: _cardColor,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
@@ -212,14 +214,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Icons.alt_route,
                         const Color(0xFF00D26A),
                       ),
-                      Container(width: 1, height: 40, color: Colors.grey[200]),
+                      Container(width: 1, height: 40, color: _dividerColor),
                       _buildStatItem(
                         '$_stationsFound',
                         'Stations Found',
                         Icons.ev_station,
                         const Color(0xFF1565C0),
                       ),
-                      Container(width: 1, height: 40, color: Colors.grey[200]),
+                      Container(width: 1, height: 40, color: _dividerColor),
                       _buildStatItem(
                         '$_minsSaved',
                         'Mins Saved',
@@ -240,12 +242,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'My Vehicle',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: _textPrimary,
                         ),
                       ),
                       IconButton(
@@ -258,7 +260,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           );
                         },
                         icon: const Icon(Icons.chevron_right),
-                        color: Colors.grey[700],
+                        color: _textSecondary,
                         constraints: const BoxConstraints(
                           minWidth: 32,
                           minHeight: 32,
@@ -278,107 +280,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   // (Recent Activity section removed)
                   const SizedBox(height: 24),
 
-                  const Text(
+                  Text(
                     'Settings',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: _textPrimary,
                     ),
                   ),
                   const SizedBox(height: 12),
 
-                  // Quick Charge AI Toggle
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade100),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE0F2F1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.psychology_outlined,
-                              color: Color(0xFF00D26A),
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'AI for Quick Charge',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _quickChargeUseAI
-                                      ? 'Gemini AI picks the best station'
-                                      : 'Scoring algorithm used instead',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Switch(
-                            value: _quickChargeUseAI,
-                            onChanged: (val) async {
-                              setState(() => _quickChargeUseAI = val);
-                              await _saveAIPref(val);
-                              // Also update live MapScreen state via MainScreen if accessible
-                              final ctx = context;
-                              if (ctx.mounted) {
-                                ScaffoldMessenger.of(ctx).clearSnackBars();
-                                AppSnackBar.info(
-                                  ctx,
-                                  val
-                                      ? 'AI station selection enabled'
-                                      : 'Scoring algorithm enabled',
-                                  icon: val
-                                      ? Icons.psychology_outlined
-                                      : Icons.calculate_outlined,
-                                );
-                              }
-                            },
-                            activeColor: const Color(0xFF00D26A),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  _buildSettingItem(
-                    'Premium Plans',
-                    Icons.star_outline,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const PremiumPlansScreen(),
-                        ),
+                  // Dark Mode toggle
+                  ValueListenableBuilder<ThemeMode>(
+                    valueListenable: AppTheme.themeNotifier,
+                    builder: (context, mode, _) {
+                      final isDark = mode == ThemeMode.dark;
+                      return _buildToggleItem(
+                        title: 'Dark Mode',
+                        subtitle: isDark
+                            ? 'Dark theme active'
+                            : 'Light theme active',
+                        icon: isDark ? Icons.dark_mode : Icons.light_mode,
+                        value: isDark,
+                        onChanged: (val) => AppTheme.setDarkMode(val),
+                        activeColor: const Color(0xFF7E57C2),
+                        iconBgColor: _isDark
+                            ? const Color(0xFF2A1F3D)
+                            : const Color(0xFFEDE7F6),
+                        iconColor: const Color(0xFF7E57C2),
                       );
                     },
                   ),
+
+                  // AI for Quick Charge toggle
+                  _buildToggleItem(
+                    title: 'AI for Quick Charge',
+                    subtitle: _quickChargeUseAI
+                        ? 'Gemini AI picks the best station'
+                        : 'Scoring algorithm used instead',
+                    icon: Icons.psychology_outlined,
+                    value: _quickChargeUseAI,
+                    onChanged: (val) async {
+                      setState(() => _quickChargeUseAI = val);
+                      await _saveAIPref(val);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        AppSnackBar.info(
+                          context,
+                          val
+                              ? 'AI station selection enabled'
+                              : 'Scoring algorithm enabled',
+                          icon: val
+                              ? Icons.psychology_outlined
+                              : Icons.calculate_outlined,
+                        );
+                      }
+                    },
+                    activeColor: const Color(0xFF00D26A),
+                    iconBgColor: _iconBgColor,
+                    iconColor: const Color(0xFF00D26A),
+                  ),
+
                   // _buildSettingItem(
                   //   'Payment Methods',
                   //   Icons.payment,
@@ -460,7 +422,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _cardColor,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
@@ -501,11 +463,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _cardColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.grey.shade200,
-            style: BorderStyle.solid,
+            color: _borderColor,
           ),
           boxShadow: [
             BoxShadow(
@@ -530,18 +491,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'No vehicle added yet',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: _textPrimary,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               'Tap to add your first EV',
-              style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 13, color: _textHint),
             ),
           ],
         ),
@@ -568,7 +529,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -598,16 +559,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     Text(
                       '${vehicle.brand} ${vehicle.model}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: _textPrimary,
                       ),
                     ),
                     Text(
                       vehicle.variant.isNotEmpty
                           ? vehicle.variant
                           : vehicle.vehicleType,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 14, color: _textSecondary),
                     ),
                   ],
                 ),
@@ -668,10 +630,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Charge Limit', style: TextStyle(color: Colors.grey)),
+              Text(
+                'Charge Limit',
+                style: TextStyle(color: _textSecondary),
+              ),
               Text(
                 '${vehicle.stopChargingAtPercent}%',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: _textPrimary,
+                ),
               ),
             ],
           ),
@@ -680,7 +648,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: vehicle.stopChargingAtPercent / 100,
-              backgroundColor: Colors.grey[200],
+              backgroundColor: _progressBgColor,
               valueColor: const AlwaysStoppedAnimation<Color>(
                 Color(0xFF00D26A),
               ),
@@ -693,7 +661,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Text(
                 'Driving: ${vehicle.drivingStyle}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: _textSecondary),
               ),
               Text(
                 vehicle.homeChargingAvailable
@@ -703,7 +671,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   fontSize: 12,
                   color: vehicle.homeChargingAvailable
                       ? const Color(0xFF00D26A)
-                      : Colors.grey,
+                      : _textSecondary,
                   fontWeight: vehicle.homeChargingAvailable
                       ? FontWeight.bold
                       : FontWeight.normal,
@@ -721,7 +689,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8F9FE),
+          color: _statBgColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -730,12 +698,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: _textPrimary,
+              ),
               textAlign: TextAlign.center,
             ),
             Text(
               label,
-              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 10, color: _textHint),
             ),
           ],
         ),
@@ -762,10 +734,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: _textPrimary,
+          ),
         ),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: _textSecondary),
+        ),
       ],
+    );
+  }
+
+  /// A row toggle for boolean settings (Dark Mode, AI, etc.)
+  Widget _buildToggleItem({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required Color activeColor,
+    required Color iconBgColor,
+    required Color iconColor,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderColor),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: _textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: _textHint),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeColor: activeColor,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -776,20 +817,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     bool isLogout = false,
     VoidCallback? onTap,
   }) {
+    final Color itemBg = isLogout
+        ? (_isDark ? const Color(0xFF3E1515) : const Color(0xFFFFEBEE))
+        : _cardColor;
+    final Color borderCol = isLogout
+        ? (_isDark ? const Color(0xFF7B1A1A) : Colors.red.shade100)
+        : _borderColor;
+    final Color iconBg = isLogout
+        ? (_isDark ? const Color(0xFF5C2020) : Colors.white)
+        : _iconBgColor;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isLogout ? const Color(0xFFFFEBEE) : Colors.white,
+        color: itemBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isLogout ? Colors.red.shade100 : Colors.grey.shade100,
-        ),
+        border: Border.all(color: borderCol),
       ),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isLogout ? Colors.white : const Color(0xFFE0F2F1),
+            color: iconBg,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
@@ -803,7 +852,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: isLogout ? Colors.red : Colors.black87,
+            color: isLogout ? Colors.red : _textPrimary,
           ),
         ),
         trailing: Row(
@@ -828,14 +877,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             Icon(
               Icons.chevron_right,
-              color: isLogout ? Colors.red.shade300 : Colors.grey,
+              color: isLogout ? Colors.red.shade300 : _textSecondary,
               size: 20,
             ),
           ],
         ),
         onTap: onTap ?? () {},
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }

@@ -789,8 +789,9 @@ class _StationsListScreenState extends State<StationsListScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildLoadingScreen() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: _softBg,
+      backgroundColor: isDark ? const Color(0xFF121212) : _softBg,
       body: Column(
         children: [
           _buildHeaderGradient(scanning: true),
@@ -855,16 +856,17 @@ class _StationsListScreenState extends State<StationsListScreen>
       builder: (_, __) {
         final t = ((_shimmerController.value + index * 0.28) % 1.0);
         final shimmer = (t < 0.5 ? t * 2 : (1.0 - t) * 2).clamp(0.0, 1.0);
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         final base = Color.lerp(
-          const Color(0xFFEEEEEE),
-          const Color(0xFFE0E0E0),
+          isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE),
+          isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE0E0E0),
           shimmer,
         )!;
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -903,8 +905,8 @@ class _StationsListScreenState extends State<StationsListScreen>
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(6),
                         color: Color.lerp(
-                          const Color(0xFFF5F5F5),
-                          const Color(0xFFEEEEEE),
+                          isDark ? const Color(0xFF252525) : const Color(0xFFF5F5F5),
+                          isDark ? const Color(0xFF2F2F2F) : const Color(0xFFEEEEEE),
                           shimmer,
                         ),
                       ),
@@ -925,9 +927,10 @@ class _StationsListScreenState extends State<StationsListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (isLoading) return _buildLoadingScreen();
     return Scaffold(
-      backgroundColor: _softBg,
+      backgroundColor: isDark ? const Color(0xFF121212) : _softBg,
       body: Column(
         children: [
           _buildHeaderGradient(scanning: false),
@@ -1099,6 +1102,7 @@ class _StationsListScreenState extends State<StationsListScreen>
 
   // ── Vehicle card (in header) ───────────────────────────────────────────────
   Widget _buildVehicleCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (userVehicles.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -1130,7 +1134,7 @@ class _StationsListScreenState extends State<StationsListScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -1164,10 +1168,10 @@ class _StationsListScreenState extends State<StationsListScreen>
                     selectedVehicle != null
                         ? '${selectedVehicle!.brand} ${selectedVehicle!.model}'
                         : 'Select a vehicle',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: _textDark,
+                      color: isDark ? Colors.white : _textDark,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1214,13 +1218,14 @@ class _StationsListScreenState extends State<StationsListScreen>
 
   // ── Search bar row ─────────────────────────────────────────────────────────
   Widget _buildControlsRow() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.72),
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white.withValues(alpha: 0.72),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E6F0)),
+          border: Border.all(color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFE0E6F0)),
           boxShadow: [
             BoxShadow(
               color: _black(0.03),
@@ -1232,7 +1237,7 @@ class _StationsListScreenState extends State<StationsListScreen>
         child: TextField(
           controller: searchController,
           onChanged: _searchStations,
-          style: const TextStyle(fontSize: 14, color: _textDark),
+          style: TextStyle(fontSize: 14, color: isDark ? Colors.white : _textDark),
           decoration: InputDecoration(
             hintText: 'Search stations or areas...',
             hintStyle: const TextStyle(color: Color(0xFFB0BEC5), fontSize: 14),
@@ -1312,16 +1317,17 @@ class _StationsListScreenState extends State<StationsListScreen>
     Color color,
     bool selected,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () => _applyFilter(key),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? color : Colors.white,
+          color: selected ? color : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? color : const Color(0xFFDDE3EE),
+            color: selected ? color : (isDark ? const Color(0xFF3A3A3A) : const Color(0xFFDDE3EE)),
             width: 1.2,
           ),
           boxShadow: selected
@@ -1344,7 +1350,7 @@ class _StationsListScreenState extends State<StationsListScreen>
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : const Color(0xFF546E7A),
+                color: selected ? Colors.white : (isDark ? Colors.grey[400] : const Color(0xFF546E7A)),
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
@@ -1353,7 +1359,7 @@ class _StationsListScreenState extends State<StationsListScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
-                color: selected ? _white(0.22) : const Color(0xFFF0F4FB),
+                color: selected ? _white(0.22) : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F4FB)),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -1361,7 +1367,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  color: selected ? Colors.white : const Color(0xFF78909C),
+                  color: selected ? Colors.white : (isDark ? Colors.grey[400] : const Color(0xFF78909C)),
                 ),
               ),
             ),
@@ -1471,16 +1477,19 @@ class _StationsListScreenState extends State<StationsListScreen>
         : '$driveDuration drive';
     final chargingType = _chargingTypeLabel(station);
     final chargingTypeIcon = _chargingTypeIcon(chargingType);
-    final bestBg = const Color(0xFFFFF3E0);
-    final bestBorder = const Color(0xFFFFB74D);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bestBg = isDark ? const Color(0xFF3D2600) : const Color(0xFFFFF3E0);
+    final bestBorder = isDark ? const Color(0xFFFF8C00) : const Color(0xFFFFB74D);
 
-    final statusBg = isOpen ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE);
+    final statusBg = isOpen
+        ? (isDark ? const Color(0xFF1B3A1F) : const Color(0xFFE8F5E9))
+        : (isDark ? const Color(0xFF3A1010) : const Color(0xFFFFEBEE));
     final statusText = isOpen
-        ? const Color(0xFF2E7D32)
-        : const Color(0xFFC62828);
+        ? (isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32))
+        : (isDark ? const Color(0xFFEF9A9A) : const Color(0xFFC62828));
     final statusDot = isOpen
-        ? const Color(0xFF43A047)
-        : const Color(0xFFE53935);
+        ? (isDark ? const Color(0xFF66BB6A) : const Color(0xFF43A047))
+        : (isDark ? const Color(0xFFE57373) : const Color(0xFFE53935));
 
     return GestureDetector(
       onTap: () => _showStationDetailsModal(station),
@@ -1488,17 +1497,17 @@ class _StationsListScreenState extends State<StationsListScreen>
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.fromLTRB(16, 16, 14, 14),
         decoration: BoxDecoration(
-          color: _cardBg,
+          color: isDark ? const Color(0xFF1E1E1E) : _cardBg,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isBestNearby
                 ? bestBorder
-                : (isRec ? _green(0.35) : const Color(0xFFE8EDF5)),
+                : (isRec ? _green(0.35) : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE8EDF5))),
             width: isBestNearby ? 1.8 : (isRec ? 1.5 : 1),
           ),
           boxShadow: [
             BoxShadow(
-              color: _black(0.08),
+              color: _black(isDark ? 0.3 : 0.08),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -1593,10 +1602,10 @@ class _StationsListScreenState extends State<StationsListScreen>
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15.5,
                           fontWeight: FontWeight.w700,
-                          color: _textDark,
+                          color: isDark ? Colors.white : _textDark,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1636,13 +1645,13 @@ class _StationsListScreenState extends State<StationsListScreen>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: _blue(0.08),
+                        color: isDark ? const Color(0xFF1565C0).withValues(alpha: 0.25) : _blue(0.08),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         distStr,
-                        style: const TextStyle(
-                          color: _primaryBlue,
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFF64B5F6) : _primaryBlue,
                           fontWeight: FontWeight.bold,
                           fontSize: 12.5,
                         ),
@@ -1697,7 +1706,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8E1),
+                    color: isDark ? const Color(0xFF2A2000) : const Color(0xFFFFF8E1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -1713,9 +1722,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                         rating > 0
                             ? '${rating.toStringAsFixed(1)}${totalRatings > 0 ? ' ($totalRatings)' : ''}'
                             : 'No ratings',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
-                          color: Color(0xFF8C6D1F),
+                          color: isDark ? const Color(0xFFD4AA2C) : const Color(0xFF8C6D1F),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1734,7 +1743,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE3F2FD),
+                      color: isDark ? const Color(0xFF0D2744) : const Color(0xFFE3F2FD),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
@@ -1746,7 +1755,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                                 ? Icons.sync_rounded
                                 : Icons.navigation_rounded,
                             size: 14,
-                            color: _primaryBlue,
+                            color: isDark ? const Color(0xFF64B5F6) : _primaryBlue,
                           ),
                           const SizedBox(width: 6),
                           Flexible(
@@ -1755,8 +1764,8 @@ class _StationsListScreenState extends State<StationsListScreen>
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: _primaryBlue,
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFF64B5F6) : _primaryBlue,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 11.5,
                               ),
@@ -1775,7 +1784,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
+                      color: isDark ? const Color(0xFF1B3A20) : const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
@@ -1785,7 +1794,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                           Icon(
                             chargingTypeIcon,
                             size: 14,
-                            color: const Color(0xFF2E7D32),
+                            color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
                           ),
                           const SizedBox(width: 6),
                           Flexible(
@@ -1794,8 +1803,8 @@ class _StationsListScreenState extends State<StationsListScreen>
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Color(0xFF2E7D32),
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
                                 fontWeight: FontWeight.w600,
                                 fontSize: 11.5,
                               ),
@@ -1816,6 +1825,7 @@ class _StationsListScreenState extends State<StationsListScreen>
 
   // ── Empty state ────────────────────────────────────────────────────────────
   Widget _buildEmptyState() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     String title = 'No stations found';
     String sub = 'Try adjusting your filters';
     IconData icon = Icons.ev_station_outlined;
@@ -1846,8 +1856,8 @@ class _StationsListScreenState extends State<StationsListScreen>
             Container(
               width: 72,
               height: 72,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF0F4FB),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F4FB),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 34, color: const Color(0xFFCDD4E0)),
@@ -1856,9 +1866,9 @@ class _StationsListScreenState extends State<StationsListScreen>
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
-                color: Color(0xFF546E7A),
+                color: isDark ? Colors.grey[400] : const Color(0xFF546E7A),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1937,6 +1947,7 @@ class _StationsListScreenState extends State<StationsListScreen>
 
   // ── Vehicle bottom sheet ───────────────────────────────────────────────────
   void _showVehicleBottomSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1944,7 +1955,7 @@ class _StationsListScreenState extends State<StationsListScreen>
       builder: (ctx) => Container(
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 24),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -1956,23 +1967,23 @@ class _StationsListScreenState extends State<StationsListScreen>
                 width: 32,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDDE3EE),
+                  color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFDDE3EE),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-              child: const Text(
+              child: Text(
                 'Select Vehicle',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: _textDark,
+                  color: isDark ? Colors.white : _textDark,
                 ),
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFF0F4FB)),
+            Divider(height: 1, color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F4FB)),
             ...userVehicles.map((vehicle) {
               final isSel = selectedVehicle?.id == vehicle.id;
               return ListTile(
@@ -1985,7 +1996,7 @@ class _StationsListScreenState extends State<StationsListScreen>
                   decoration: BoxDecoration(
                     color: isSel
                         ? const Color(0xFF1A1A2E)
-                        : const Color(0xFFF0F4FB),
+                        : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF0F4FB)),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -1996,10 +2007,10 @@ class _StationsListScreenState extends State<StationsListScreen>
                 ),
                 title: Text(
                   '${vehicle.brand} ${vehicle.model}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
-                    color: _textDark,
+                    color: isDark ? Colors.white : _textDark,
                   ),
                 ),
                 subtitle: Text(
@@ -2038,6 +2049,7 @@ class _StationsListScreenState extends State<StationsListScreen>
 
   // ── Station details modal ──────────────────────────────────────────────────
   void _showStationDetailsModal(Map<String, dynamic> station) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final dist = (station['distance'] as double);
     final distStr = dist < 1
         ? '${(dist * 1000).toInt()} m'
@@ -2060,7 +2072,7 @@ class _StationsListScreenState extends State<StationsListScreen>
       builder: (ctx) => Container(
         margin: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -2191,13 +2203,13 @@ class _StationsListScreenState extends State<StationsListScreen>
                         ),
                         decoration: BoxDecoration(
                           color: isOpen
-                              ? const Color(0xFFE8F5E9)
-                              : const Color(0xFFFFEBEE),
+                              ? (isDark ? const Color(0xFF1B3A1F) : const Color(0xFFE8F5E9))
+                              : (isDark ? const Color(0xFF3A1010) : const Color(0xFFFFEBEE)),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: isOpen
-                                ? const Color(0xFFA5D6A7)
-                                : const Color(0xFFEF9A9A),
+                                ? (isDark ? const Color(0xFF388E3C) : const Color(0xFFA5D6A7))
+                                : (isDark ? const Color(0xFFE57373) : const Color(0xFFEF9A9A)),
                           ),
                         ),
                         child: Row(
@@ -2207,16 +2219,16 @@ class _StationsListScreenState extends State<StationsListScreen>
                               Icons.circle_rounded,
                               size: 8,
                               color: isOpen
-                                  ? const Color(0xFF43A047)
-                                  : const Color(0xFFE53935),
+                                  ? (isDark ? const Color(0xFF66BB6A) : const Color(0xFF43A047))
+                                  : (isDark ? const Color(0xFFE57373) : const Color(0xFFE53935)),
                             ),
                             const SizedBox(width: 5),
                             Text(
                               isOpen ? 'Open Now' : 'Closed',
                               style: TextStyle(
                                 color: isOpen
-                                    ? const Color(0xFF2E7D32)
-                                    : const Color(0xFFC62828),
+                                    ? (isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32))
+                                    : (isDark ? const Color(0xFFEF9A9A) : const Color(0xFFC62828)),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -2234,10 +2246,10 @@ class _StationsListScreenState extends State<StationsListScreen>
                         const SizedBox(width: 3),
                         Text(
                           rating.toStringAsFixed(1),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: _textDark,
+                            color: isDark ? Colors.white : _textDark,
                           ),
                         ),
                         Text(
@@ -2257,23 +2269,23 @@ class _StationsListScreenState extends State<StationsListScreen>
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
+                      color: isDark ? const Color(0xFF1B3A20) : const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFC8E6C9)),
+                      border: Border.all(color: isDark ? const Color(0xFF388E3C) : const Color(0xFFC8E6C9)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           chargingTypeIcon,
-                          color: const Color(0xFF2E7D32),
+                          color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
                           size: 14,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           chargingType,
-                          style: const TextStyle(
-                            color: Color(0xFF2E7D32),
+                          style: TextStyle(
+                            color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -2294,9 +2306,9 @@ class _StationsListScreenState extends State<StationsListScreen>
                       Expanded(
                         child: Text(
                           location,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFF546E7A),
+                            color: isDark ? Colors.grey[400] : const Color(0xFF546E7A),
                             height: 1.4,
                           ),
                         ),

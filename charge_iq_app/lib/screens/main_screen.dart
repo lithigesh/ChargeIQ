@@ -51,6 +51,7 @@ class _MainScreenState extends State<MainScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return StatefulBuilder(
           builder: (context, setSheet) {
             return Padding(
@@ -124,7 +125,9 @@ class _MainScreenState extends State<MainScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: isDark
+                          ? const Color(0xFF2A2A2A)
+                          : Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -134,7 +137,7 @@ class _MainScreenState extends State<MainScreen> {
                               ? Icons.psychology_outlined
                               : Icons.calculate_outlined,
                           size: 18,
-                          color: Colors.grey[600],
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -144,7 +147,7 @@ class _MainScreenState extends State<MainScreen> {
                                 : 'Score mode: Stations are ranked instantly using a weighted score of open status, rating, distance and ports.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: isDark ? Colors.grey[400] : Colors.grey[600],
                             ),
                           ),
                         ),
@@ -182,6 +185,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final navBgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     return Scaffold(
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
@@ -192,10 +197,10 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: navBgColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -203,8 +208,8 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: BottomAppBar(
           height: 80,
-          color: Colors.white,
-          surfaceTintColor: Colors.white,
+          color: navBgColor,
+          surfaceTintColor: navBgColor,
           elevation: 0,
           padding: EdgeInsets.zero,
           clipBehavior: Clip.none,
@@ -272,7 +277,7 @@ class _MainScreenState extends State<MainScreen> {
                             if (mounted) setState(() => _fabLoading = false);
                           }
                         },
-                  backgroundColor: const Color.fromARGB(255, 51, 155, 33),
+                  backgroundColor: const Color(0xFF00C853),
                   elevation: 4,
                   shape: const CircleBorder(),
                   child: _fabLoading
@@ -310,6 +315,11 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inactiveColor =
+        isDark ? Colors.grey.shade400 : Colors.grey.shade500;
+    const activeColor = Color(0xFF00C853);
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -326,20 +336,13 @@ class _NavItem extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: selected
-                    ? const Color.fromARGB(
-                        255,
-                        51,
-                        155,
-                        33,
-                      ).withValues(alpha: 0.1)
+                    ? activeColor.withValues(alpha: 0.1)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
                 selected ? activeIcon : icon,
-                color: selected
-                    ? const Color.fromARGB(255, 51, 155, 33)
-                    : Colors.grey.shade500,
+                color: selected ? activeColor : inactiveColor,
                 size: 24,
               ),
             ),
@@ -349,10 +352,8 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: selected
-                    ? const Color.fromARGB(255, 51, 155, 33)
-                    : Colors.grey.shade500,
-                fontFamily: 'Roboto', // Keep consistent with theme
+                color: selected ? activeColor : inactiveColor,
+                fontFamily: 'Roboto',
               ),
               child: Text(label),
             ),

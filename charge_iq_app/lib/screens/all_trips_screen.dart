@@ -93,7 +93,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FE),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           _buildHeader(),
@@ -165,6 +165,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
   }
 
   Widget _buildTripsList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return StreamBuilder<List<TripPlan>>(
       stream: _tripService.getUserTrips(),
       builder: (context, snapshot) {
@@ -186,13 +187,13 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey[600],
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Your planned trips will appear here',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                  style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[600] : Colors.grey[400]),
                 ),
               ],
             ),
@@ -257,10 +258,10 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
               },
               child: Card(
                 elevation: 0,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade200),
+                  side: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
@@ -286,7 +287,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                   ),
                   subtitle: Text(
                     'Range: ${trip.evRange} km • $dateStr',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 12),
                   ),
                   trailing: Icon(
                     Icons.arrow_forward_ios,
