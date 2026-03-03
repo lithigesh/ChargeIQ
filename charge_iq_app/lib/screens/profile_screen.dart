@@ -379,11 +379,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     },
                   ),
-                  _buildSettingItem(
-                    'Payment Methods',
-                    Icons.payment,
-                    badgeCount: 2,
-                  ),
+                  // _buildSettingItem(
+                  //   'Payment Methods',
+                  //   Icons.payment,
+                  //   badgeCount: 2,
+                  // ),
                   StreamBuilder<QuerySnapshot>(
                     stream: _savedLocationService.getSavedStationsStream(),
                     builder: (context, snapshot) {
