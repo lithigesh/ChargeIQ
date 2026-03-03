@@ -88,6 +88,13 @@ class _NavigationScreenState extends State<NavigationScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    _mapController?.setMapStyle(dark ? _mapStyleDark : _mapStyleLight);
+  }
+
+  @override
   void dispose() {
     _bottomSheetController.dispose();
     _fabController.dispose();
@@ -530,8 +537,8 @@ class _NavigationScreenState extends State<NavigationScreen>
             ),
             onMapCreated: (controller) {
               _mapController = controller;
-              // Set dark-ish style for premium feel
-              controller.setMapStyle(_mapStyle);
+              controller.setMapStyle(
+                  isDark ? _mapStyleDark : _mapStyleLight);
             },
             markers: _markers,
             polylines: _polylines,
@@ -1739,19 +1746,35 @@ class _NavigationScreenState extends State<NavigationScreen>
     );
   }
 
-  // Subtle map style for a premium look
-  static const String _mapStyle = '''
+  // Light map style — hides POI & transit clutter
+  static const String _mapStyleLight = '''
 [
-  {
-    "featureType": "poi",
-    "elementType": "labels",
-    "stylers": [{"visibility": "off"}]
-  },
-  {
-    "featureType": "transit",
-    "elementType": "labels",
-    "stylers": [{"visibility": "off"}]
-  }
+  {"featureType":"poi","elementType":"labels","stylers":[{"visibility":"off"}]},
+  {"featureType":"transit","elementType":"labels","stylers":[{"visibility":"off"}]}
+]
+''';
+
+  // Google Night Mode map style
+  static const String _mapStyleDark = '''
+[
+  {"elementType":"geometry","stylers":[{"color":"#242f3e"}]},
+  {"elementType":"labels.text.stroke","stylers":[{"color":"#242f3e"}]},
+  {"elementType":"labels.text.fill","stylers":[{"color":"#746855"}]},
+  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},
+  {"featureType":"poi","elementType":"labels","stylers":[{"visibility":"off"}]},
+  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#263c3f"}]},
+  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#38414e"}]},
+  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#212a37"}]},
+  {"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#9ca5b3"}]},
+  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#746855"}]},
+  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#1f2835"}]},
+  {"featureType":"road.highway","elementType":"labels.text.fill","stylers":[{"color":"#f3d19c"}]},
+  {"featureType":"transit","elementType":"labels","stylers":[{"visibility":"off"}]},
+  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#2f3948"}]},
+  {"featureType":"transit.station","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},
+  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#17263c"}]},
+  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#515c6d"}]},
+  {"featureType":"water","elementType":"labels.text.stroke","stylers":[{"color":"#17263c"}]}
 ]
 ''';
 }

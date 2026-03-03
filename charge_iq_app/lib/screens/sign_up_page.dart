@@ -111,8 +111,10 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F9FF),
+      backgroundColor:
+          isDark ? const Color(0xFF121212) : const Color(0xFFF5F9FF),
       body: SafeArea(
         child: Stack(
           children: [
@@ -135,24 +137,27 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'Join ChargeIQ',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1C1E),
+                        color: isDark ? Colors.white : const Color(0xFF1A1C1E),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Start your electric journey today',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                      style: TextStyle(
+                          color:
+                              isDark ? Colors.grey.shade400 : Colors.grey,
+                          fontSize: 16),
                     ),
                     const SizedBox(height: 32),
 
-                    _buildInputLabel('Full Name'),
+                    _buildInputLabel('Full Name', isDark),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _nameController,
@@ -165,11 +170,12 @@ class _SignUpPageState extends State<SignUpPage> {
                       decoration: _inputDecoration(
                         hint: 'John Doe',
                         icon: Icons.person_outline,
+                        isDark: isDark,
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    _buildInputLabel('Email'),
+                    _buildInputLabel('Email', isDark),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _emailController,
@@ -185,11 +191,12 @@ class _SignUpPageState extends State<SignUpPage> {
                       decoration: _inputDecoration(
                         hint: 'your.email@example.com',
                         icon: Icons.email_outlined,
+                        isDark: isDark,
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    _buildInputLabel('Password'),
+                    _buildInputLabel('Password', isDark),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
@@ -208,11 +215,12 @@ class _SignUpPageState extends State<SignUpPage> {
                         icon: Icons.lock_outline,
                         isPassword: true,
                         isConfirm: false,
+                        isDark: isDark,
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    _buildInputLabel('Confirm Password'),
+                    _buildInputLabel('Confirm Password', isDark),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _confirmPasswordController,
@@ -231,6 +239,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         icon: Icons.lock_outline,
                         isPassword: true,
                         isConfirm: true,
+                        isDark: isDark,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -238,9 +247,14 @@ class _SignUpPageState extends State<SignUpPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE0F7FA).withOpacity(0.3),
+                        color: isDark
+                            ? const Color(0xFF1A2A2D)
+                            : const Color(0xFFE0F7FA).withOpacity(0.3),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(
+                            color: isDark
+                                ? Colors.grey.shade700
+                                : Colors.grey.shade200),
                       ),
                       child: Row(
                         children: [
@@ -265,7 +279,9 @@ class _SignUpPageState extends State<SignUpPage> {
                             child: RichText(
                               text: TextSpan(
                                 style: TextStyle(
-                                  color: Colors.grey.shade700,
+                                  color: isDark
+                                      ? Colors.grey.shade300
+                                      : Colors.grey.shade700,
                                   fontSize: 12,
                                   fontFamily: 'Roboto',
                                 ),
@@ -338,15 +354,26 @@ class _SignUpPageState extends State<SignUpPage> {
 
                     Row(
                       children: [
-                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                        Expanded(
+                            child: Divider(
+                                color: isDark
+                                    ? Colors.grey.shade700
+                                    : Colors.grey.shade300)),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
                             'Or sign up with',
-                            style: TextStyle(color: Colors.grey.shade600),
+                            style: TextStyle(
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : Colors.grey.shade600),
                           ),
                         ),
-                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                        Expanded(
+                            child: Divider(
+                                color: isDark
+                                    ? Colors.grey.shade700
+                                    : Colors.grey.shade300)),
                       ],
                     ),
 
@@ -357,11 +384,15 @@ class _SignUpPageState extends State<SignUpPage> {
                       child: OutlinedButton(
                         onPressed: _isLoading ? null : _signInWithGoogle,
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Colors.grey.shade300),
+                          side: BorderSide(
+                              color: isDark
+                                  ? Colors.grey.shade700
+                                  : Colors.grey.shade300),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          backgroundColor: Colors.white,
+                          backgroundColor:
+                              isDark ? const Color(0xFF1E1E1E) : Colors.white,
                         ),
                         child: _isLoading
                             ? const SizedBox(
@@ -382,11 +413,13 @@ class _SignUpPageState extends State<SignUpPage> {
                                     height: 24,
                                   ),
                                   const SizedBox(width: 12),
-                                  const Text(
+                                  Text(
                                     'Continue with Google',
                                     style: TextStyle(
                                       fontSize: 16,
-                                      color: Colors.black87,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -402,7 +435,10 @@ class _SignUpPageState extends State<SignUpPage> {
                       children: [
                         Text(
                           "Already have an account?",
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(
+                              color: isDark
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade600),
                         ),
                         TextButton(
                           onPressed: () {
@@ -429,13 +465,13 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  Widget _buildInputLabel(String label) {
+  Widget _buildInputLabel(String label, bool isDark) {
     return Text(
       label,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF1A1C1E),
+        color: isDark ? Colors.white : const Color(0xFF1A1C1E),
       ),
     );
   }
@@ -445,6 +481,7 @@ class _SignUpPageState extends State<SignUpPage> {
     required IconData icon,
     bool isPassword = false,
     bool isConfirm = false,
+    bool isDark = false,
   }) {
     return InputDecoration(
       hintText: hint,
@@ -470,10 +507,11 @@ class _SignUpPageState extends State<SignUpPage> {
             )
           : null,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey.shade200),
+        borderSide: BorderSide(
+            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),

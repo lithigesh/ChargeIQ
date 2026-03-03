@@ -2,22 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppTheme {
-  static const String _darkModeKey = 'dark_mode';
+  static const String _themeModeKey = 'theme_mode';
 
   static final ValueNotifier<ThemeMode> themeNotifier =
-      ValueNotifier(ThemeMode.light);
+      ValueNotifier(ThemeMode.system);
 
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
-    final isDark = prefs.getBool(_darkModeKey) ?? false;
-    themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+    // Migrate old bool key if present
+    final legacyDark = prefs.getBool('dark_mode');
+    if (legacyDark != null) {
+      await prefs.remove('dark_mode');
+      await prefs.setString(_themeModeKey, legacyDark ? 'dark' : 'light');
+    }
+    final saved = prefs.getString(_themeModeKey);
+    themeNotifier.value = switch (saved) {
+      'dark' => ThemeMode.dark,
+      'light' => ThemeMode.light,
+      _ => ThemeMode.system,
+    };
   }
 
-  static Future<void> setDarkMode(bool isDark) async {
+  static Future<void> setThemeMode(ThemeMode mode) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_darkModeKey, isDark);
-    themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+    final val = switch (mode) {
+      ThemeMode.dark => 'dark',
+      ThemeMode.light => 'light',
+      _ => 'system',
+    };
+    await prefs.setString(_themeModeKey, val);
+    themeNotifier.value = mode;
   }
+
+  /// Legacy helper kept for compatibility
+  static Future<void> setDarkMode(bool isDark) =>
+      setThemeMode(isDark ? ThemeMode.dark : ThemeMode.light);
 
   static bool get isDark => themeNotifier.value == ThemeMode.dark;
 

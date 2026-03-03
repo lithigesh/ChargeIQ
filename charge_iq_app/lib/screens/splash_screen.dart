@@ -44,8 +44,9 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -71,7 +72,9 @@ class _SplashScreenState extends State<SplashScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(30),
                     child: Image.asset(
-                      'assets/logo-white-bg.png',
+                      isDark
+                          ? 'assets/logo-bg-removed.png'
+                          : 'assets/logo-white-bg.png',
                       fit: BoxFit.cover,
                     ),
                   ),

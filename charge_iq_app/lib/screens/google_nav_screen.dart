@@ -403,8 +403,10 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
+    // Navigation screen always uses light theme for safety/visibility.
+    return Theme(
+      data: ThemeData.light(),
+      child: Scaffold(
         body: SafeArea(
           child: Stack(
             children: [
@@ -458,6 +460,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
             ],
           ),
         ),
+      ),
     );
   }
 
@@ -832,7 +835,7 @@ class _GoogleNavScreenState extends State<GoogleNavScreen>
               child: Container(
                 width: 56,
                 height: 56,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                   shape: BoxShape.circle,
                 ),

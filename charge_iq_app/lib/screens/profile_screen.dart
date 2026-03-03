@@ -25,6 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final SavedLocationService _savedLocationService = SavedLocationService();
   User? _user;
   bool _quickChargeUseAI = true;
+  late final Stream<Vehicle?> _defaultVehicleStream;
 
   int _routesTaken = 0;
   int _stationsFound = 0;
@@ -59,6 +60,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _user = _authService.currentUser;
+    _defaultVehicleStream = _vehicleService.getDefaultVehicleStream();
     _loadAIPref();
   }
 
@@ -161,13 +163,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
-                  // Dark mode toggle in header
+                  // Theme mode popup in header
                   ValueListenableBuilder<ThemeMode>(
                     valueListenable: AppTheme.themeNotifier,
                     builder: (context, mode, _) {
-                      final isDark = mode == ThemeMode.dark;
-                      return GestureDetector(
-                        onTap: () => AppTheme.setDarkMode(!isDark),
+                      final headerIcon = switch (mode) {
+                        ThemeMode.dark => Icons.dark_mode,
+                        ThemeMode.light => Icons.light_mode,
+                        _ => Icons.brightness_auto,
+                      };
+                      final popupIsDark =
+                          Theme.of(context).brightness == Brightness.dark;
+                      return PopupMenuButton<ThemeMode>(
+                        onSelected: AppTheme.setThemeMode,
+                        initialValue: mode,
+                        color: popupIsDark
+                            ? const Color(0xFF2A2A2A)
+                            : Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                        offset: const Offset(0, 44),
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: ThemeMode.light,
+                            child: Row(
+                              children: [
+                                const Icon(Icons.light_mode,
+                                    size: 18, color: Color(0xFFF9A825)),
+                                const SizedBox(width: 10),
+                                Text('Light',
+                                    style: TextStyle(
+                                        color: popupIsDark
+                                            ? Colors.white
+                                            : Colors.black87)),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: ThemeMode.system,
+                            child: Row(
+                              children: [
+                                const Icon(Icons.brightness_auto,
+                                    size: 18, color: Color(0xFF7E57C2)),
+                                const SizedBox(width: 10),
+                                Text('System',
+                                    style: TextStyle(
+                                        color: popupIsDark
+                                            ? Colors.white
+                                            : Colors.black87)),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: ThemeMode.dark,
+                            child: Row(
+                              children: [
+                                const Icon(Icons.dark_mode,
+                                    size: 18, color: Color(0xFF5C6BC0)),
+                                const SizedBox(width: 10),
+                                Text('Dark',
+                                    style: TextStyle(
+                                        color: popupIsDark
+                                            ? Colors.white
+                                            : Colors.black87)),
+                              ],
+                            ),
+                          ),
+                        ],
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -175,7 +237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            isDark ? Icons.light_mode : Icons.dark_mode,
+                            headerIcon,
                             color: Colors.white,
                             size: 20,
                           ),
@@ -290,24 +352,126 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Dark Mode toggle
+                  // Theme mode selector
                   ValueListenableBuilder<ThemeMode>(
                     valueListenable: AppTheme.themeNotifier,
                     builder: (context, mode, _) {
-                      final isDark = mode == ThemeMode.dark;
-                      return _buildToggleItem(
-                        title: 'Dark Mode',
-                        subtitle: isDark
-                            ? 'Dark theme active'
-                            : 'Light theme active',
-                        icon: isDark ? Icons.dark_mode : Icons.light_mode,
-                        value: isDark,
-                        onChanged: (val) => AppTheme.setDarkMode(val),
-                        activeColor: const Color(0xFF7E57C2),
-                        iconBgColor: _isDark
-                            ? const Color(0xFF2A1F3D)
-                            : const Color(0xFFEDE7F6),
-                        iconColor: const Color(0xFF7E57C2),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _borderColor),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: _isDark
+                                    ? const Color(0xFF2A1F3D)
+                                    : const Color(0xFFEDE7F6),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                switch (mode) {
+                                  ThemeMode.dark => Icons.dark_mode,
+                                  ThemeMode.light => Icons.light_mode,
+                                  _ => Icons.brightness_auto,
+                                },
+                                color: const Color(0xFF7E57C2),
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Appearance',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: _textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    switch (mode) {
+                                      ThemeMode.dark => 'Dark theme',
+                                      ThemeMode.light => 'Light theme',
+                                      _ => 'Follows system',
+                                    },
+                                    style: TextStyle(
+                                        fontSize: 11, color: _textHint),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            DropdownButtonHideUnderline(
+                              child: DropdownButton<ThemeMode>(
+                                value: mode,
+                                isDense: true,
+                                dropdownColor: _isDark
+                                    ? const Color(0xFF2A2A2A)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                icon: Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: _textSecondary,
+                                  size: 18,
+                                ),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: ThemeMode.light,
+                                    child: Row(children: [
+                                      const Icon(Icons.light_mode,
+                                          size: 15,
+                                          color: Color(0xFFF9A825)),
+                                      const SizedBox(width: 8),
+                                      Text('Light',
+                                          style: TextStyle(
+                                              color: _textPrimary,
+                                              fontSize: 13)),
+                                    ]),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: ThemeMode.system,
+                                    child: Row(children: [
+                                      const Icon(Icons.brightness_auto,
+                                          size: 15,
+                                          color: Color(0xFF7E57C2)),
+                                      const SizedBox(width: 8),
+                                      Text('System',
+                                          style: TextStyle(
+                                              color: _textPrimary,
+                                              fontSize: 13)),
+                                    ]),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: ThemeMode.dark,
+                                    child: Row(children: [
+                                      const Icon(Icons.dark_mode,
+                                          size: 15,
+                                          color: Color(0xFF5C6BC0)),
+                                      const SizedBox(width: 8),
+                                      Text('Dark',
+                                          style: TextStyle(
+                                              color: _textPrimary,
+                                              fontSize: 13)),
+                                    ]),
+                                  ),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) AppTheme.setThemeMode(v);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     },
                   ),
@@ -402,22 +566,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'Reset Password',
                       Icons.lock_outline,
                       onTap: () {
+                        final cardColor = _cardColor;
+                        final textPrimary = _textPrimary;
+                        final textSecondary = _textSecondary;
                         showDialog(
                           context: context,
                           builder: (dialogContext) => AlertDialog(
+                            backgroundColor: cardColor,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            title: const Text('Reset Password'),
+                            title: Text(
+                              'Reset Password',
+                              style: TextStyle(color: textPrimary),
+                            ),
                             content: Text(
                               'Send a password reset email to ${_user!.email}?',
+                              style: TextStyle(color: textSecondary),
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(dialogContext),
-                                child: const Text(
+                                child: Text(
                                   'Cancel',
-                                  style: TextStyle(color: Colors.grey),
+                                  style: TextStyle(color: textSecondary),
                                 ),
                               ),
                               TextButton(
@@ -471,7 +643,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildDefaultVehicleCard() {
     return StreamBuilder<Vehicle?>(
-      stream: _vehicleService.getDefaultVehicleStream(),
+      stream: _defaultVehicleStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Container(

@@ -102,8 +102,10 @@ class _SignInPageState extends State<SignInPage>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F9FF), // Light background
+      backgroundColor:
+          isDark ? const Color(0xFF121212) : const Color(0xFFF5F9FF),
       body: SafeArea(
         child: Stack(
           children: [
@@ -128,25 +130,28 @@ class _SignInPageState extends State<SignInPage>
                     ),
                     const SizedBox(height: 15),
                     // Welcome Text
-                    const Text(
+                    Text(
                       'Welcome Back',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1C1E),
+                        color: isDark ? Colors.white : const Color(0xFF1A1C1E),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Power up your journey with ChargeIQ',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                      style: TextStyle(
+                          color:
+                              isDark ? Colors.grey.shade400 : Colors.grey,
+                          fontSize: 16),
                     ),
                     const SizedBox(height: 40),
 
                     // Email Field
-                    _buildInputLabel('Email'),
+                    _buildInputLabel('Email', isDark),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _emailController,
@@ -160,12 +165,13 @@ class _SignInPageState extends State<SignInPage>
                       decoration: _inputDecoration(
                         hint: 'your.email@example.com',
                         icon: Icons.email_outlined,
+                        isDark: isDark,
                       ),
                     ),
                     const SizedBox(height: 20),
 
                     // Password Field
-                    _buildInputLabel('Password'),
+                    _buildInputLabel('Password', isDark),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _passwordController,
@@ -180,6 +186,7 @@ class _SignInPageState extends State<SignInPage>
                         hint: 'Enter your password',
                         icon: Icons.lock_outline,
                         isPassword: true,
+                        isDark: isDark,
                       ),
                     ),
 
@@ -197,17 +204,28 @@ class _SignInPageState extends State<SignInPage>
                               return StatefulBuilder(
                                 builder: (context, setState) {
                                   return AlertDialog(
+                                    backgroundColor: isDark
+                                        ? const Color(0xFF1E1E1E)
+                                        : Colors.white,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),
                                     ),
-                                    title: const Text('Reset Password'),
+                                    title: Text(
+                                      'Reset Password',
+                                      style: TextStyle(
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF1A1C1E)),
+                                    ),
                                     content: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Text(
+                                        Text(
                                           'Enter your email to receive a password reset link.',
                                           style: TextStyle(
-                                            color: Colors.black87,
+                                            color: isDark
+                                                ? Colors.grey.shade300
+                                                : Colors.black87,
                                           ),
                                         ),
                                         const SizedBox(height: 16),
@@ -215,11 +233,26 @@ class _SignInPageState extends State<SignInPage>
                                           controller: emailController,
                                           keyboardType:
                                               TextInputType.emailAddress,
+                                          style: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : Colors.black87),
                                           decoration: InputDecoration(
                                             labelText: 'Email',
+                                            labelStyle: TextStyle(
+                                                color: isDark
+                                                    ? Colors.grey.shade400
+                                                    : null),
                                             hintText: 'your.email@example.com',
-                                            prefixIcon: const Icon(
+                                            filled: true,
+                                            fillColor: isDark
+                                                ? const Color(0xFF2A2A2A)
+                                                : null,
+                                            prefixIcon: Icon(
                                               Icons.email_outlined,
+                                              color: isDark
+                                                  ? Colors.grey.shade400
+                                                  : null,
                                             ),
                                             border: OutlineInputBorder(
                                               borderRadius:
@@ -229,7 +262,9 @@ class _SignInPageState extends State<SignInPage>
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               borderSide: BorderSide(
-                                                color: Colors.grey.shade300,
+                                                color: isDark
+                                                    ? Colors.grey.shade700
+                                                    : Colors.grey.shade300,
                                               ),
                                             ),
                                             focusedBorder: OutlineInputBorder(
@@ -390,15 +425,26 @@ class _SignInPageState extends State<SignInPage>
                     // Divider
                     Row(
                       children: [
-                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                        Expanded(
+                            child: Divider(
+                                color: isDark
+                                    ? Colors.grey.shade700
+                                    : Colors.grey.shade300)),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
                             'Or continue with',
-                            style: TextStyle(color: Colors.grey.shade600),
+                            style: TextStyle(
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : Colors.grey.shade600),
                           ),
                         ),
-                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                        Expanded(
+                            child: Divider(
+                                color: isDark
+                                    ? Colors.grey.shade700
+                                    : Colors.grey.shade300)),
                       ],
                     ),
 
@@ -410,11 +456,15 @@ class _SignInPageState extends State<SignInPage>
                       child: OutlinedButton(
                         onPressed: _isLoading ? null : _signInWithGoogle,
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Colors.grey.shade300),
+                          side: BorderSide(
+                              color: isDark
+                                  ? Colors.grey.shade700
+                                  : Colors.grey.shade300),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          backgroundColor: Colors.white,
+                          backgroundColor:
+                              isDark ? const Color(0xFF1E1E1E) : Colors.white,
                         ),
                         child: _isLoading
                             ? const SizedBox(
@@ -435,11 +485,13 @@ class _SignInPageState extends State<SignInPage>
                                     height: 24,
                                   ),
                                   const SizedBox(width: 12),
-                                  const Text(
+                                  Text(
                                     'Continue with Google',
                                     style: TextStyle(
                                       fontSize: 16,
-                                      color: Colors.black87,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -456,7 +508,10 @@ class _SignInPageState extends State<SignInPage>
                       children: [
                         Text(
                           "Don't have an account?",
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(
+                              color: isDark
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade600),
                         ),
                         TextButton(
                           onPressed: () {
@@ -488,13 +543,13 @@ class _SignInPageState extends State<SignInPage>
     );
   }
 
-  Widget _buildInputLabel(String label) {
+  Widget _buildInputLabel(String label, bool isDark) {
     return Text(
       label,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF1A1C1E),
+        color: isDark ? Colors.white : const Color(0xFF1A1C1E),
       ),
     );
   }
@@ -503,6 +558,7 @@ class _SignInPageState extends State<SignInPage>
     required String hint,
     required IconData icon,
     bool isPassword = false,
+    bool isDark = false,
   }) {
     return InputDecoration(
       hintText: hint,
@@ -524,10 +580,11 @@ class _SignInPageState extends State<SignInPage>
             )
           : null,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey.shade200),
+        borderSide: BorderSide(
+            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
