@@ -2491,7 +2491,7 @@ class MapScreenState extends State<MapScreen> {
           // Google Map
           GoogleMap(
             mapType: MapType.normal,
-            style: isDark ? _darkMapStyle : _lightMapStyle,
+            style: isDark ? _mapStyleDark : _mapStyleLight,
             initialCameraPosition: const CameraPosition(
               target: LatLng(11.1271, 78.6569),
               zoom: 7,
@@ -2503,7 +2503,7 @@ class MapScreenState extends State<MapScreen> {
             myLocationButtonEnabled: false,
             mapToolbarEnabled: false,
             compassEnabled: true,
-            onMapCreated: (controller) {
+            onMapCreated: (controller) async {
               mapController = controller;
             },
             onTap: (_) {
@@ -2875,8 +2875,8 @@ class MapScreenState extends State<MapScreen> {
     );
   }
 
-  static const String _darkMapStyle = googleMapStyleDarkNightMode;
+  static const String _mapStyleLight = googleMapStyleLightDecluttered;
 
-  static const String _lightMapStyle = googleMapStyleLightDecluttered;
+  static const String _mapStyleDark = googleMapStyleDarkNightMode;
 }
 
