@@ -2050,6 +2050,8 @@ class _StationsListScreenState extends State<StationsListScreen>
     final lat = station['lat'] as double;
     final lng = station['lng'] as double;
     final isRec = _isRecommendedForVehicle(station);
+    final chargingType = _chargingTypeLabel(station);
+    final chargingTypeIcon = _chargingTypeIcon(chargingType);
 
     showModalBottomSheet(
       context: context,
@@ -2248,6 +2250,37 @@ class _StationsListScreenState extends State<StationsListScreen>
                       ],
                     ],
                   ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFC8E6C9)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          chargingTypeIcon,
+                          color: const Color(0xFF2E7D32),
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          chargingType,
+                          style: const TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 14),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2290,14 +2323,14 @@ class _StationsListScreenState extends State<StationsListScreen>
                       },
                       icon: const Icon(Icons.navigation_rounded, size: 16),
                       label: const Text(
-                        'Start Navigation',
+                        'Navigate',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _accentGreen,
+                        backgroundColor: const Color(0xFF4285F4),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(

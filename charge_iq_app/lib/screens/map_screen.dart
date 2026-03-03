@@ -872,6 +872,39 @@ class MapScreenState extends State<MapScreen> {
     });
   }
 
+  String _chargingTypeLabel(Map<String, dynamic> station) {
+    final name = (station['name'] ?? '').toString().toLowerCase();
+    if (name.contains('supercharger') || name.contains('tesla')) {
+      return 'CCS2';
+    }
+    if (name.contains('chademo')) return 'CHAdeMO';
+    if (name.contains('gb/t') || name.contains('gbt')) return 'GB/T';
+    if (name.contains('ccs')) return 'CCS2';
+    if (name.contains('fast')) return 'Fast Charge';
+
+    final types = (station['types'] as List<dynamic>? ?? const <dynamic>[])
+        .map((e) => e.toString().toLowerCase())
+        .toList();
+    if (types.contains('electric_vehicle_charging_station')) return 'Type 2';
+    return 'Type 2';
+  }
+
+  IconData _chargingTypeIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'ccs2':
+        return Icons.electrical_services_rounded;
+      case 'chademo':
+        return Icons.ev_station_rounded;
+      case 'gb/t':
+        return Icons.power_rounded;
+      case 'fast charge':
+        return Icons.flash_on_rounded;
+      case 'type 2':
+      default:
+        return Icons.ev_station_rounded;
+    }
+  }
+
   // Show professional station details card
   void _showStationDetails(Map<String, dynamic> station) {
     setState(() {
@@ -901,6 +934,8 @@ class MapScreenState extends State<MapScreen> {
     final rating = station['rating']?.toDouble() ?? 0.0;
     final totalRatings = station['userRatingsTotal'] ?? 0;
     final isOpen = station['isOpen'];
+    final chargingType = _chargingTypeLabel(station);
+    final chargingTypeIcon = _chargingTypeIcon(chargingType);
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -1088,6 +1123,77 @@ class MapScreenState extends State<MapScreen> {
 
                 const SizedBox(height: 12),
 
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF8E1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFFFE082)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.star_rounded,
+                            color: Colors.amber,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            rating > 0
+                                ? '${rating.toStringAsFixed(1)} ($totalRatings)'
+                                : 'No ratings',
+                            style: const TextStyle(
+                              color: Color(0xFF8C6D1F),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFC8E6C9)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            chargingTypeIcon,
+                            size: 14,
+                            color: const Color(0xFF2E7D32),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            chargingType,
+                            style: const TextStyle(
+                              color: Color(0xFF2E7D32),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
                 // AI Selection Badge
                 if (station['selected_via_ai'] == true)
                   Container(
@@ -1242,28 +1348,7 @@ class MapScreenState extends State<MapScreen> {
                     ),
                   ),
 
-                // Rating
-                if (rating > 0)
-                  Row(
-                    children: [
-                      Icon(Icons.star, color: Colors.amber[700], size: 20),
-                      const SizedBox(width: 6),
-                      Text(
-                        rating.toStringAsFixed(1),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '($totalRatings reviews)',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
                 // Address
                 Row(
