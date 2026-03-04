@@ -22,171 +22,193 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
   Widget build(BuildContext context) {
     final isDark = _isDarkCtx(context);
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FE),
-      appBar: AppBar(
-        title: const Text('My Vehicles'),
-        backgroundColor: const Color(0xFF1565C0),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: StreamBuilder<String?>(
-        stream: _vehicleService.getDefaultVehicleIdStream(),
-        builder: (context, defaultSnapshot) {
-          final defaultVehicleId = defaultSnapshot.data;
-
-          return StreamBuilder<List<Vehicle>>(
-            stream: _vehicleService.getUserVehicles(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: AppLottieLoader(color: Color(0xFF10B981)),
-                );
-              }
-
-              if (snapshot.hasError) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        color: Colors.redAccent,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Failed to load vehicles',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-                      ),
-                    ],
+      backgroundColor: isDark
+          ? const Color(0xFF121212)
+          : const Color(0xFFF8F9FE),
+      body: Column(
+        children: [
+          // ── Header matching profile / planner pages ──
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 60, 20, 24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Back button row
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
-                );
-              }
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'My Vehicles',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Manage & track your EVs',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
 
-              final vehicles = snapshot.data ?? [];
+          // ── Body ──
+          Expanded(
+            child: StreamBuilder<String?>(
+              stream: _vehicleService.getDefaultVehicleIdStream(),
+              builder: (context, defaultSnapshot) {
+                final defaultVehicleId = defaultSnapshot.data;
 
-              return Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.electric_car,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                return StreamBuilder<List<Vehicle>>(
+                  stream: _vehicleService.getUserVehicles(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: AppLottieLoader(color: Color(0xFF10B981)),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              'Manage Your Vehicles',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : Colors.black87,
-                              ),
+                            const Icon(
+                              Icons.error_outline,
+                              color: Colors.redAccent,
+                              size: 48,
                             ),
+                            const SizedBox(height: 12),
                             Text(
-                              '${vehicles.length} vehicle${vehicles.length == 1 ? '' : 's'} registered',
+                              'Failed to load vehicles',
                               style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[isDark ? 400 : 500],
+                                fontSize: 16,
+                                color: Colors.grey[700],
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: vehicles.isEmpty
-                          ? _buildEmptyState(isDark)
-                          : ListView.separated(
-                              itemCount: vehicles.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (context, index) =>
-                                  _buildVehicleCard(
-                                    vehicles[index],
-                                    defaultVehicleId,
-                                    isDark,
-                                  ),
-                            ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _navigateToForm(),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Vehicle'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
+                      );
+                    }
 
-  Widget _buildEmptyState(bool isDark) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1565C0).withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.directions_car_outlined,
-              size: 56,
-              color: Color(0xFF1565C0),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'No vehicles added yet',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Add your EV to unlock smart features\nlike range prediction & trip planning',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[isDark ? 400 : 500],
-              height: 1.5,
+                    final vehicles = snapshot.data ?? [];
+
+                    return Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: vehicles.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: const Color(
+                                              0xFF1565C0,
+                                            ).withValues(alpha: 0.08),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.directions_car_outlined,
+                                            size: 56,
+                                            color: Color(0xFF1565C0),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Text(
+                                          'No vehicles added yet',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDark
+                                                ? Colors.white
+                                                : Colors.black87,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Add your EV to unlock smart features\nlike range prediction & trip planning',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color:
+                                                Colors.grey[isDark ? 400 : 500],
+                                            height: 1.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    itemCount: vehicles.length,
+                                    separatorBuilder: (context, index) =>
+                                        const SizedBox(height: 12),
+                                    itemBuilder: (context, index) =>
+                                        _buildVehicleCard(
+                                          vehicles[index],
+                                          defaultVehicleId,
+                                          isDark,
+                                        ),
+                                  ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _navigateToForm(),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add Vehicle'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
@@ -194,7 +216,11 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
     );
   }
 
-  Widget _buildVehicleCard(Vehicle vehicle, String? defaultVehicleId, bool isDark) {
+  Widget _buildVehicleCard(
+    Vehicle vehicle,
+    String? defaultVehicleId,
+    bool isDark,
+  ) {
     final isDefault = vehicle.id == defaultVehicleId;
     IconData vehicleIcon;
     switch (vehicle.vehicleType) {
@@ -261,7 +287,10 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                         vehicle.vehicleType,
                         '${vehicle.manufacturingYear}',
                       ].join(' • '),
-                      style: TextStyle(fontSize: 13, color: Colors.grey[isDark ? 400 : 600]),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[isDark ? 400 : 600],
+                      ),
                     ),
                   ],
                 ),
@@ -383,7 +412,11 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                   const Color(0xFF10B981),
                   isDark,
                 ),
-                Container(width: 1, height: 30, color: isDark ? Colors.grey[700] : Colors.grey[300]),
+                Container(
+                  width: 1,
+                  height: 30,
+                  color: isDark ? Colors.grey[700] : Colors.grey[300],
+                ),
                 _buildQuickStat(
                   Icons.route,
                   '${vehicle.maxRange} km',
@@ -391,7 +424,11 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
                   const Color(0xFF1565C0),
                   isDark,
                 ),
-                Container(width: 1, height: 30, color: isDark ? Colors.grey[700] : Colors.grey[300]),
+                Container(
+                  width: 1,
+                  height: 30,
+                  color: isDark ? Colors.grey[700] : Colors.grey[300],
+                ),
                 _buildQuickStat(
                   Icons.ev_station,
                   vehicle.chargingPortType,
@@ -426,7 +463,13 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
             color: isDark ? Colors.white : Colors.black87,
           ),
         ),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[isDark ? 400 : 500])),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey[isDark ? 400 : 500],
+          ),
+        ),
       ],
     );
   }
@@ -671,7 +714,13 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[isDark ? 400 : 600])),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[isDark ? 400 : 600],
+            ),
+          ),
           Text(
             value,
             style: TextStyle(
@@ -862,344 +911,473 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
   Widget build(BuildContext context) {
     final isDark = _isDarkCtx(context);
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FE),
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Vehicle' : 'Add Vehicle'),
-        backgroundColor: const Color(0xFF1565C0),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            // ━━━ Section 1: Vehicle Info ━━━
-            _buildSectionHeader(
-              '🚗',
-              'Vehicle Information',
-              'Basic details about your EV',
+      backgroundColor: isDark
+          ? const Color(0xFF121212)
+          : const Color(0xFFF8F9FE),
+      body: Column(
+        children: [
+          // ── Header matching profile / planner pages ──
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 60, 20, 24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
             ),
-            const SizedBox(height: 12),
-            _buildCard([
-              _buildDropdown(
-                label: 'Vehicle Brand',
-                value: _brand,
-                items: _brands,
-                onChanged: (v) => setState(() => _brand = v!),
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _modelController,
-                decoration: const InputDecoration(
-                  labelText: 'Vehicle Model',
-                  hintText: 'e.g., Nexon EV, ZS EV, Kona',
-                  prefixIcon: Icon(Icons.directions_car_outlined),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Model is required'
-                    : null,
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                initialValue: _variant,
-                decoration: const InputDecoration(
-                  labelText: 'Variant (Optional)',
-                  hintText: 'e.g., Long Range, Prime, Base',
-                  prefixIcon: Icon(Icons.style_outlined),
+                const SizedBox(height: 16),
+                Text(
+                  _isEditing ? 'Edit Vehicle' : 'Add Vehicle',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                onChanged: (v) => _variant = v.trim(),
-              ),
-              const SizedBox(height: 14),
-              _buildDropdown(
-                label: 'Vehicle Type',
-                value: _vehicleType,
-                items: _vehicleTypes,
-                onChanged: (v) => setState(() => _vehicleType = v!),
-              ),
-              const SizedBox(height: 14),
-              _buildDropdown(
-                label: 'Manufacturing Year',
-                value: _manufacturingYear.toString(),
-                items: List.generate(
-                  15,
-                  (i) => (DateTime.now().year - i).toString(),
+                const SizedBox(height: 4),
+                Text(
+                  _isEditing
+                      ? 'Update your EV details below'
+                      : 'Fill in your EV details to get started',
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
-                onChanged: (v) =>
-                    setState(() => _manufacturingYear = int.parse(v!)),
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _registrationController,
-                decoration: const InputDecoration(
-                  labelText: 'Registration Number (Optional)',
-                  hintText: 'e.g., KA 01 AB 1234',
-                  prefixIcon: Icon(Icons.confirmation_number_outlined),
-                ),
-                textCapitalization: TextCapitalization.characters,
-              ),
-            ]),
-
-            const SizedBox(height: 24),
-
-            // ━━━ Section 2: Battery & Range ━━━
-            _buildSectionHeader(
-              '🔋',
-              'Battery & Range',
-              'Enable smart features like range prediction',
+              ],
             ),
-            const SizedBox(height: 12),
-            _buildCard([
-              TextFormField(
-                controller: _batteryCapacityController,
-                decoration: const InputDecoration(
-                  labelText: 'Battery Capacity (kWh)',
-                  hintText: 'e.g., 30.2',
-                  prefixIcon: Icon(Icons.battery_full),
-                  suffixText: 'kWh',
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Battery capacity is required';
-                  }
-                  if (double.tryParse(v.trim()) == null) {
-                    return 'Enter a valid number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _maxRangeController,
-                decoration: const InputDecoration(
-                  labelText: 'Max Range (km)',
-                  hintText: 'e.g., 312',
-                  prefixIcon: Icon(Icons.route),
-                  suffixText: 'km',
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Max range is required';
-                  }
-                  if (double.tryParse(v.trim()) == null) {
-                    return 'Enter a valid number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              _buildDropdown(
-                label: 'Charging Port Type',
-                value: _chargingPortType,
-                items: _chargingPorts,
-                onChanged: (v) => setState(() => _chargingPortType = v!),
-              ),
-              const SizedBox(height: 14),
-              _buildDropdown(
-                label: 'Max AC Charging Power (kW)',
-                value: _acPowerOptions.contains(_maxACPower)
-                    ? _maxACPower.toString()
-                    : _acPowerOptions.first.toString(),
-                items: _acPowerOptions.map((e) => e.toString()).toList(),
-                onChanged: (v) =>
-                    setState(() => _maxACPower = double.parse(v!)),
-              ),
-              const SizedBox(height: 14),
-              _buildDropdown(
-                label: 'Max DC Fast Charging Power (kW)',
-                value: _dcPowerOptions.contains(_maxDCPower)
-                    ? _maxDCPower.toString()
-                    : _dcPowerOptions.first.toString(),
-                items: _dcPowerOptions.map((e) => e.toString()).toList(),
-                onChanged: (v) =>
-                    setState(() => _maxDCPower = double.parse(v!)),
-              ),
-            ]),
+          ),
 
-            const SizedBox(height: 24),
-
-            // ━━━ Section 3: Smart Settings ━━━
-            _buildSectionHeader(
-              '⚡',
-              'Smart Settings',
-              'Optional but powerful for personalization',
-            ),
-            const SizedBox(height: 12),
-            _buildCard([
-              _buildDropdown(
-                label: 'Driving Style',
-                value: _drivingStyle,
-                items: _drivingStyles,
-                onChanged: (v) => setState(() => _drivingStyle = v!),
-              ),
-              const SizedBox(height: 14),
-              _buildToggleRow(
-                'AC Usage Usually?',
-                _acUsageUsually,
-                (v) => setState(() => _acUsageUsually = v),
-                icon: Icons.ac_unit,
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _batteryHealthController,
-                decoration: const InputDecoration(
-                  labelText: 'Battery Health % (Optional)',
-                  hintText: 'e.g., 95',
-                  prefixIcon: Icon(Icons.health_and_safety_outlined),
-                  suffixText: '%',
-                ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                validator: (v) {
-                  if (v != null && v.trim().isNotEmpty) {
-                    final val = double.tryParse(v.trim());
-                    if (val == null || val < 0 || val > 100) {
-                      return 'Enter a value between 0 and 100';
-                    }
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 14),
-              _buildDropdown(
-                label: 'Preferred Charging Type',
-                value: _preferredChargingType,
-                items: _chargingPreferences,
-                onChanged: (v) => setState(() => _preferredChargingType = v!),
-              ),
-              const SizedBox(height: 18),
-              // Stop Charging At % Slider
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          // ── Form Body ──
+          Expanded(
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(20),
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Stop Charging At',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.white70 : Colors.grey[700],
-                        ),
+                  // ━━━ Section 1: Vehicle Info ━━━
+                  _buildSectionHeader(
+                    Icons.directions_car_filled,
+                    'Vehicle Information',
+                    'Basic details about your EV',
+                    const Color(0xFF1565C0),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCard([
+                    _buildDropdown(
+                      label: 'Vehicle Brand',
+                      value: _brand,
+                      items: _brands,
+                      onChanged: (v) => setState(() => _brand = v!),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _modelController,
+                      decoration: _inputDecoration(
+                        label: 'Vehicle Model',
+                        hint: 'e.g., Nexon EV, ZS EV, Kona',
+                        icon: Icons.directions_car_outlined,
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Model is required'
+                          : null,
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      initialValue: _variant,
+                      decoration: _inputDecoration(
+                        label: 'Variant (Optional)',
+                        hint: 'e.g., Long Range, Prime, Base',
+                        icon: Icons.style_outlined,
+                      ),
+                      onChanged: (v) => _variant = v.trim(),
+                    ),
+                    const SizedBox(height: 14),
+                    _buildDropdown(
+                      label: 'Vehicle Type',
+                      value: _vehicleType,
+                      items: _vehicleTypes,
+                      onChanged: (v) => setState(() => _vehicleType = v!),
+                    ),
+                    const SizedBox(height: 14),
+                    _buildDropdown(
+                      label: 'Manufacturing Year',
+                      value: _manufacturingYear.toString(),
+                      items: List.generate(
+                        15,
+                        (i) => (DateTime.now().year - i).toString(),
+                      ),
+                      onChanged: (v) =>
+                          setState(() => _manufacturingYear = int.parse(v!)),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _registrationController,
+                      decoration: _inputDecoration(
+                        label: 'Registration Number (Optional)',
+                        hint: 'e.g., KA 01 AB 1234',
+                        icon: Icons.confirmation_number_outlined,
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                    ),
+                  ]),
+
+                  const SizedBox(height: 24),
+
+                  // ━━━ Section 2: Battery & Range ━━━
+                  _buildSectionHeader(
+                    Icons.battery_charging_full,
+                    'Battery & Range',
+                    'Enable smart features like range prediction',
+                    const Color(0xFF10B981),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCard([
+                    TextFormField(
+                      controller: _batteryCapacityController,
+                      decoration: _inputDecoration(
+                        label: 'Battery Capacity (kWh)',
+                        hint: 'e.g., 30.2',
+                        icon: Icons.battery_full,
+                        suffix: 'kWh',
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Battery capacity is required';
+                        }
+                        if (double.tryParse(v.trim()) == null) {
+                          return 'Enter a valid number';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _maxRangeController,
+                      decoration: _inputDecoration(
+                        label: 'Max Range (km)',
+                        hint: 'e.g., 312',
+                        icon: Icons.route,
+                        suffix: 'km',
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Max range is required';
+                        }
+                        if (double.tryParse(v.trim()) == null) {
+                          return 'Enter a valid number';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    _buildDropdown(
+                      label: 'Charging Port Type',
+                      value: _chargingPortType,
+                      items: _chargingPorts,
+                      onChanged: (v) => setState(() => _chargingPortType = v!),
+                    ),
+                    const SizedBox(height: 14),
+                    _buildDropdown(
+                      label: 'Max AC Charging Power (kW)',
+                      value: _acPowerOptions.contains(_maxACPower)
+                          ? _maxACPower.toString()
+                          : _acPowerOptions.first.toString(),
+                      items: _acPowerOptions.map((e) => e.toString()).toList(),
+                      onChanged: (v) =>
+                          setState(() => _maxACPower = double.parse(v!)),
+                    ),
+                    const SizedBox(height: 14),
+                    _buildDropdown(
+                      label: 'Max DC Fast Charging Power (kW)',
+                      value: _dcPowerOptions.contains(_maxDCPower)
+                          ? _maxDCPower.toString()
+                          : _dcPowerOptions.first.toString(),
+                      items: _dcPowerOptions.map((e) => e.toString()).toList(),
+                      onChanged: (v) =>
+                          setState(() => _maxDCPower = double.parse(v!)),
+                    ),
+                  ]),
+
+                  const SizedBox(height: 24),
+
+                  // ━━━ Section 3: Smart Settings ━━━
+                  _buildSectionHeader(
+                    Icons.auto_awesome,
+                    'Smart Settings',
+                    'Optional but powerful for personalization',
+                    const Color(0xFFE65100),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCard([
+                    _buildDropdown(
+                      label: 'Driving Style',
+                      value: _drivingStyle,
+                      items: _drivingStyles,
+                      onChanged: (v) => setState(() => _drivingStyle = v!),
+                    ),
+                    const SizedBox(height: 14),
+                    _buildToggleRow(
+                      'AC Usage Usually?',
+                      _acUsageUsually,
+                      (v) => setState(() => _acUsageUsually = v),
+                      icon: Icons.ac_unit,
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _batteryHealthController,
+                      decoration: _inputDecoration(
+                        label: 'Battery Health % (Optional)',
+                        hint: 'e.g., 95',
+                        icon: Icons.health_and_safety_outlined,
+                        suffix: '%',
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      validator: (v) {
+                        if (v != null && v.trim().isNotEmpty) {
+                          final val = double.tryParse(v.trim());
+                          if (val == null || val < 0 || val > 100) {
+                            return 'Enter a value between 0 and 100';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    _buildDropdown(
+                      label: 'Preferred Charging Type',
+                      value: _preferredChargingType,
+                      items: _chargingPreferences,
+                      onChanged: (v) =>
+                          setState(() => _preferredChargingType = v!),
+                    ),
+                    const SizedBox(height: 18),
+                    // Stop Charging At % Slider
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Stop Charging At',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: isDark
+                                    ? Colors.white70
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF10B981,
+                                ).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '$_stopChargingAt%',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '$_stopChargingAt%',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF10B981),
+                        const SizedBox(height: 4),
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: const Color(0xFF10B981),
+                            inactiveTrackColor: const Color(
+                              0xFF10B981,
+                            ).withValues(alpha: 0.2),
+                            thumbColor: const Color(0xFF10B981),
+                            overlayColor: const Color(
+                              0xFF10B981,
+                            ).withValues(alpha: 0.15),
+                            trackHeight: 6,
+                          ),
+                          child: Slider(
+                            value: _stopChargingAt.toDouble(),
+                            min: 50,
+                            max: 100,
+                            divisions: 10,
+                            label: '$_stopChargingAt%',
+                            onChanged: (v) =>
+                                setState(() => _stopChargingAt = v.toInt()),
                           ),
                         ),
+                        Text(
+                          '80% recommended for battery longevity',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[isDark ? 400 : 500],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _buildToggleRow(
+                      'Home Charging Available?',
+                      _homeChargingAvailable,
+                      (v) => setState(() => _homeChargingAvailable = v),
+                      icon: Icons.home_outlined,
+                    ),
+                  ]),
+
+                  const SizedBox(height: 32),
+
+                  // ━━━ Submit Button ━━━
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _saveVehicle,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                        disabledBackgroundColor: const Color(
+                          0xFF10B981,
+                        ).withValues(alpha: 0.5),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: const Color(0xFF10B981),
-                      inactiveTrackColor: const Color(
-                        0xFF10B981,
-                      ).withValues(alpha: 0.2),
-                      thumbColor: const Color(0xFF10B981),
-                      overlayColor: const Color(
-                        0xFF10B981,
-                      ).withValues(alpha: 0.15),
-                      trackHeight: 6,
-                    ),
-                    child: Slider(
-                      value: _stopChargingAt.toDouble(),
-                      min: 50,
-                      max: 100,
-                      divisions: 10,
-                      label: '$_stopChargingAt%',
-                      onChanged: (v) =>
-                          setState(() => _stopChargingAt = v.toInt()),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: AppLottieLoader(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              _isEditing ? 'Save Changes' : 'Add Vehicle',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
-                  Text(
-                    '80% recommended for battery longevity',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[isDark ? 400 : 500]),
-                  ),
+                  const SizedBox(height: 30),
                 ],
               ),
-              const SizedBox(height: 14),
-              _buildToggleRow(
-                'Home Charging Available?',
-                _homeChargingAvailable,
-                (v) => setState(() => _homeChargingAvailable = v),
-                icon: Icons.home_outlined,
-              ),
-            ]),
-
-            const SizedBox(height: 32),
-
-            // ━━━ Submit Button ━━━
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveVehicle,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
-                  disabledBackgroundColor: const Color(
-                    0xFF10B981,
-                  ).withValues(alpha: 0.5),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: AppLottieLoader(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        _isEditing ? 'Save Changes' : 'Add Vehicle',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-              ),
             ),
-            const SizedBox(height: 30),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   // ── Helper Widgets ──
 
-  Widget _buildSectionHeader(String emoji, String title, String subtitle) {
+  InputDecoration _inputDecoration({
+    required String label,
+    required String hint,
+    required IconData icon,
+    String? suffix,
+  }) {
+    final isDark = _isDarkCtx(context);
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      suffixText: suffix,
+      prefixIcon: Container(
+        margin: const EdgeInsets.only(left: 12, right: 8),
+        child: Icon(
+          icon,
+          size: 20,
+          color: isDark ? Colors.grey[400] : Colors.grey[600],
+        ),
+      ),
+      prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+      filled: true,
+      fillColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FE),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade200,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade200,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+  ) {
     final isDark = _isDarkCtx(context);
     return Row(
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 22)),
-        const SizedBox(width: 10),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1211,9 +1389,13 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
                 color: isDark ? Colors.white : Colors.black87,
               ),
             ),
+            const SizedBox(height: 2),
             Text(
               subtitle,
-              style: TextStyle(fontSize: 12, color: Colors.grey[isDark ? 400 : 500]),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[isDark ? 400 : 500],
+              ),
             ),
           ],
         ),
@@ -1228,10 +1410,13 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2C2C2C) : Colors.grey.shade100,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -1249,9 +1434,34 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
+    final isDark = _isDarkCtx(context);
     return DropdownButtonFormField<String>(
       initialValue: value,
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FE),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade200,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade200,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+      ),
       items: items
           .map((e) => DropdownMenuItem(value: e, child: Text(e)))
           .toList(),
@@ -1270,14 +1480,32 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade50,
+        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FE),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade200,
+        ),
       ),
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 20, color: Colors.grey[isDark ? 400 : 600]),
-            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: value
+                    ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                    : (isDark ? const Color(0xFF333333) : Colors.grey.shade100),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: value
+                    ? const Color(0xFF10B981)
+                    : Colors.grey[isDark ? 400 : 600],
+              ),
+            ),
+            const SizedBox(width: 12),
           ],
           Expanded(
             child: Text(
@@ -1292,11 +1520,11 @@ class _VehicleFormScreenState extends State<VehicleFormScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: const Color(0xFF10B981),
+            activeTrackColor: const Color(0xFF10B981).withValues(alpha: 0.4),
+            activeColor: const Color(0xFF10B981),
           ),
         ],
       ),
     );
   }
 }
-
