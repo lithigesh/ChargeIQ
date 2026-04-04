@@ -138,7 +138,3 @@ lib/
    ```
 
 ---
-
-## License
-
-This project is private and not published to pub.dev.
